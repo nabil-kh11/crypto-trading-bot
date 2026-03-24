@@ -205,3 +205,17 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# Data files
+data/raw/*.csv
+data/raw/*.xlsx
+data/processed/*.csv
+data/processed/*.xlsx
+
+# Trained models
+data/models/*.joblib
+data/models/*.pkl
+data/models/*.h5
+
+# Jupyter checkpoints
+notebooks/.ipynb_checkpoints/
