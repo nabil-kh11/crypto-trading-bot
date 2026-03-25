@@ -3,8 +3,9 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-BTC_MODEL_PATH = os.getenv("BTC_MODEL_PATH", "../../data/models/xgb_btc.joblib")
-ETH_MODEL_PATH = os.getenv("ETH_MODEL_PATH", "../../data/models/xgb_eth.joblib")
+BTC_MODEL_PATH   = os.getenv("BTC_MODEL_PATH",   "../../data/models/best_btc.joblib")
+ETH_MODEL_PATH   = os.getenv("ETH_MODEL_PATH",   "../../data/models/best_eth.joblib")
+BTC_SCALER_PATH  = os.getenv("BTC_SCALER_PATH",  "../../data/models/best_btc_scaler.joblib")
 
 SUPPORTED_SYMBOLS = ["BTC/USDT", "ETH/USDT"]
 
