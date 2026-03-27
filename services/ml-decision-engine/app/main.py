@@ -1,13 +1,15 @@
 import uvicorn
+import datetime
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from typing import Dict
 from app.predictor import predict
+from app.publisher import publish_signal
 from app.config import SUPPORTED_SYMBOLS, HOST, PORT
 
 app = FastAPI(
     title="ML Decision Engine",
-    description="Generates buy/sell/hold signals using XGBoost models",
+    description="Generates buy/sell/hold signals using best models",
     version="1.0.0"
 )
 
@@ -32,6 +34,16 @@ def get_prediction(request: PredictRequest):
         )
     try:
         result = predict(request.symbol, request.features)
+
+        # Publish signal to RabbitMQ
+        publish_signal({
+            "symbol":     request.symbol,
+            "signal":     result["signal"],
+            "confidence": result["confidence"],
+            "model":      result["model"],
+            "timestamp":  datetime.datetime.utcnow().isoformat()
+        })
+
         return result
     except ValueError as e:
         raise HTTPException(status_code=422, detail=str(e))

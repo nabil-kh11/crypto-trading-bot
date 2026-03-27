@@ -2,18 +2,20 @@ import uvicorn
 from fastapi import FastAPI
 from app.database import init_db, get_all_trades, get_portfolio
 from app.executor import execute_trade
+from app.consumer import start_consumer_thread
 from app.config import HOST, PORT
 
 app = FastAPI(
     title="Order Executor",
-    description="Paper trading execution service with capital management",
+    description="Paper trading execution service with RabbitMQ and capital management",
     version="1.0.0"
 )
 
 @app.on_event("startup")
 def startup():
     init_db()
-    print("Order Executor started!")
+    start_consumer_thread()
+    print("Order Executor started with RabbitMQ consumer!")
 
 @app.get("/health")
 def health():
