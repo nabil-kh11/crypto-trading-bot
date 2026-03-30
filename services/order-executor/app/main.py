@@ -1,5 +1,6 @@
 import uvicorn
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from app.database import init_db, get_all_trades, get_portfolio
 from app.executor import execute_trade
 from app.consumer import start_consumer_thread
@@ -9,6 +10,14 @@ app = FastAPI(
     title="Order Executor",
     description="Paper trading execution service with RabbitMQ and capital management",
     version="1.0.0"
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 @app.on_event("startup")
@@ -33,6 +42,9 @@ def get_trades(symbol: str = None, limit: int = 50):
 @app.get("/portfolio/{symbol}")
 def portfolio(symbol: str):
     symbol = symbol.upper()
+    # Handle both "BTC" and "BTC/USDT" formats
+    if "/" not in symbol:
+        symbol = symbol + "/USDT"
     data = get_portfolio(symbol)
     if not data:
         return {"message": f"No portfolio found for {symbol}"}

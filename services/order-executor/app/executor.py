@@ -24,6 +24,30 @@ def get_latest_price(symbol: str) -> float:
     return float(data["price"])
 
 def get_ml_signal(symbol: str) -> dict:
+    try:
+        symbol_url = symbol.replace("/", "-")
+        response = requests.get(
+            f"{MARKET_DATA_URL}/ohlcv/{symbol_url}?limit=100", timeout=10)
+        candles = response.json()
+        if not candles or len(candles) == 0:
+            return None
+        latest = candles[-1]
+        features = {}
+        for col in FEATURE_COLS:
+            if col in latest:
+                features[col] = latest[col]
+            else:
+                return None
+        response = requests.post(f"{ML_ENGINE_URL}/predict", json={
+            "symbol": symbol,
+            "features": features
+        }, timeout=10)
+        if response.status_code != 200:
+            return None
+        return response.json()
+    except Exception as e:
+        print(f"Error getting ML signal: {e}")
+        return None
     symbol_url = symbol.replace("/", "-")
     response = requests.get(
         f"{MARKET_DATA_URL}/ohlcv/{symbol_url}?limit=100", timeout=10)

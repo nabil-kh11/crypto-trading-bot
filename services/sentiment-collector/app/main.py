@@ -1,4 +1,5 @@
 import uvicorn
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi import FastAPI
 from app.database import init_db, get_recent_posts, get_sentiment_summary
 from app.scraper import scrape_and_save_all
@@ -8,6 +9,13 @@ app = FastAPI(
     title="Sentiment Collector",
     description="Scrapes Reddit posts and performs sentiment analysis",
     version="1.0.0"
+)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 @app.on_event("startup")

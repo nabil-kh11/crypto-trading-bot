@@ -1,5 +1,6 @@
 import uvicorn
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from app.collector import fetch_ohlcv, get_latest_price
 from app.config import SYMBOLS, PORT, HOST
 
@@ -7,6 +8,14 @@ app = FastAPI(
     title="Market Data Collector",
     description="Fetches real-time and historical OHLCV data from Binance",
     version="1.0.0"
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 @app.get("/health")

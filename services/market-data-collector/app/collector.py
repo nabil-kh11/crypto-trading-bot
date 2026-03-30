@@ -2,12 +2,10 @@ import ccxt
 import pandas as pd
 import ta
 from datetime import datetime
-from app.config import BINANCE_API_KEY, BINANCE_SECRET_KEY, TIMEFRAME, FETCH_LIMIT
+from app.config import TIMEFRAME, FETCH_LIMIT
 
-exchange = ccxt.binance({
-    "apiKey": BINANCE_API_KEY,
-    "secret": BINANCE_SECRET_KEY,
-})
+# Always use public endpoints - no API key needed for OHLCV data
+exchange = ccxt.binance()
 
 def fetch_ohlcv(symbol: str, limit: int = FETCH_LIMIT) -> pd.DataFrame:
     raw = exchange.fetch_ohlcv(symbol, TIMEFRAME, limit=limit)

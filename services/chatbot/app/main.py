@@ -5,11 +5,19 @@ from app.rag import answer_question
 from app.embeddings import build_index
 from app.mock_data import seed_database
 from app.config import HOST, PORT
+from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI(
     title="RAG Chatbot",
     description="Sentiment-aware crypto chatbot powered by Gemini and FAISS",
     version="1.0.0"
+)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 class QuestionRequest(BaseModel):
