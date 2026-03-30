@@ -34,7 +34,8 @@ export default function SignalCard({ title }: { title: string, signal: any }) {
         Confidence: {data?.confidence?.toFixed(1) || '---'}%
       </p>
       <p className="text-gray-500 text-xs">
-        Model: {data?.model || data?.signal ? 'Neural Network' : '---'}
+       Model: {data?.model || '---'}
+
       </p>
       <p className="text-gray-600 text-xs mt-1">
         Price: ${data?.price?.toLocaleString() || '---'}

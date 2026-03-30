@@ -1,7 +1,6 @@
 import requests
-from datetime import datetime
 from app.config import (ML_ENGINE_URL, MARKET_DATA_URL,
-                        INITIAL_CAPITAL, STOP_LOSS_PCT, MIN_CONFIDENCE)
+                        INITIAL_CAPITAL, MIN_CONFIDENCE)
 from app.database import get_portfolio, update_portfolio, save_trade
 
 FEATURE_COLS = [
@@ -38,38 +37,16 @@ def get_ml_signal(symbol: str) -> dict:
                 features[col] = latest[col]
             else:
                 return None
-        response = requests.post(f"{ML_ENGINE_URL}/predict", json={
-            "symbol": symbol,
-            "features": features
-        }, timeout=10)
+        response = requests.post(f"{ML_ENGINE_URL}/predict?publish=false", json={
+    "symbol": symbol,
+    "features": features
+}, timeout=10)
         if response.status_code != 200:
             return None
         return response.json()
     except Exception as e:
         print(f"Error getting ML signal: {e}")
         return None
-    symbol_url = symbol.replace("/", "-")
-    response = requests.get(
-        f"{MARKET_DATA_URL}/ohlcv/{symbol_url}?limit=100", timeout=10)
-    candles = response.json()
-    if not candles:
-        return None
-
-    latest = candles[-1]
-
-    features = {}
-    for col in FEATURE_COLS:
-        if col in latest:
-            features[col] = latest[col]
-        else:
-            print(f"Missing feature: {col}")
-            return None
-
-    response = requests.post(f"{ML_ENGINE_URL}/predict", json={
-        "symbol": symbol,
-        "features": features
-    }, timeout=10)
-    return response.json()
 
 def execute_trade(symbol: str) -> dict:
     portfolio = get_portfolio(symbol)
@@ -88,6 +65,7 @@ def execute_trade(symbol: str) -> dict:
 
         signal     = signal_data['signal']
         confidence = signal_data['confidence']
+        model      = signal_data.get('model', 'Unknown')
         price      = get_latest_price(symbol)
 
     except Exception as e:
@@ -98,6 +76,7 @@ def execute_trade(symbol: str) -> dict:
             "status": "skipped",
             "reason": f"Confidence {confidence}% below threshold {MIN_CONFIDENCE}%",
             "signal": signal,
+            "model":  model,
             "price":  price
         }
 
@@ -117,6 +96,13 @@ def execute_trade(symbol: str) -> dict:
         }
         update_portfolio(symbol, 0.0, quantity, price)
         save_trade(trade)
+        return {
+            "status":    "executed",
+            "signal":    signal,
+            "model":     model,
+            "trade":     trade,
+            "portfolio": get_portfolio(symbol)
+        }
 
     elif signal == "SELL" and position > 0:
         capital_after = position * price
@@ -134,19 +120,21 @@ def execute_trade(symbol: str) -> dict:
         }
         update_portfolio(symbol, capital_after, 0.0, 0.0)
         save_trade(trade)
+        return {
+            "status":    "executed",
+            "signal":    signal,
+            "model":     model,
+            "trade":     trade,
+            "portfolio": get_portfolio(symbol)
+        }
 
     else:
         return {
             "status":     "hold",
             "signal":     signal,
             "confidence": confidence,
+            "model":      model,
             "price":      price,
             "capital":    capital,
             "position":   position
         }
-
-    return {
-        "status":    "executed",
-        "trade":     trade,
-        "portfolio": get_portfolio(symbol)
-    }

@@ -1,11 +1,17 @@
 import os
 from dotenv import load_dotenv
+from pathlib import Path
 
-load_dotenv()
+load_dotenv(Path(__file__).resolve().parents[3] / '.env')
 
-BTC_MODEL_PATH   = os.getenv("BTC_MODEL_PATH",   "../../data/models/best_btc.joblib")
-ETH_MODEL_PATH   = os.getenv("ETH_MODEL_PATH",   "../../data/models/best_eth.joblib")
-BTC_SCALER_PATH  = os.getenv("BTC_SCALER_PATH",  "../../data/models/best_btc_scaler.joblib")
+BTC_MODEL_PATH  = os.getenv("BTC_MODEL_PATH",  "../../data/models/best_btc.joblib")
+ETH_MODEL_PATH  = os.getenv("ETH_MODEL_PATH",  "../../data/models/best_eth.joblib")
+BTC_SCALER_PATH = os.getenv("BTC_SCALER_PATH", "../../data/models/best_btc_scaler.joblib")
+
+RABBITMQ_URL    = os.getenv("RABBITMQ_URL", "amqp://guest:guest@localhost:5672/")
+QUEUE_NAME      = "trading_signals"
+
+MARKET_DATA_URL = os.getenv("MARKET_DATA_URL", "http://localhost:8001")
 
 SUPPORTED_SYMBOLS = ["BTC/USDT", "ETH/USDT"]
 
@@ -24,5 +30,3 @@ FEATURE_COLS = [
 
 HOST = os.getenv("HOST", "0.0.0.0")
 PORT = int(os.getenv("PORT", 8002))
-RABBITMQ_URL = os.getenv("RABBITMQ_URL", "amqp://guest:guest@localhost:5672/")
-QUEUE_NAME   = "trading_signals"

@@ -24,7 +24,7 @@ def predict(symbol: str, features: dict) -> dict:
         probabilities = btc_model.predict_proba(X)[0]
     else:
         # Random Forest uses raw features
-        X = df.values
+        X = df
         prediction = eth_model.predict(X)[0]
         probabilities = eth_model.predict_proba(X)[0]
 

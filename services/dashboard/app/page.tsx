@@ -8,6 +8,9 @@ import PortfolioCard from '@/components/PortfolioCard'
 import SentimentCard from '@/components/SentimentCard'
 import ChatBot from '@/components/ChatBot'
 import TradesTable from '@/components/TradesTable'
+import ServiceHealth from '@/components/ServiceHealth'
+import StatsRow from '@/components/StatsRow'
+import PortfolioChart from '@/components/PortfolioChart'
 
 export default function Dashboard() {
   const [btcPrice, setBtcPrice] = useState<any>(null)
@@ -31,7 +34,7 @@ export default function Dashboard() {
       safeFetch('http://localhost:8004/portfolio/ETH'),
       safeFetch('http://localhost:8003/summary/BTC'),
       safeFetch('http://localhost:8003/summary/ETH'),
-      safeFetch('http://localhost:8004/trades?limit=10'),
+      safeFetch('http://localhost:8004/trades?limit=50'),
     ])
 
     if (btcP) setBtcPrice(btcP)
@@ -71,7 +74,9 @@ export default function Dashboard() {
             </div>
           </div>
         </div>
-
+        <ServiceHealth />
+        <StatsRow trades={trades} />
+        
         {/* Price Cards */}
         <div className="grid grid-cols-2 gap-4 mb-6">
           <div className="bg-gray-900 rounded-xl p-4 border border-gray-800">
@@ -115,6 +120,7 @@ export default function Dashboard() {
 
         {/* Trades Table */}
         <TradesTable trades={trades} />
+        <PortfolioChart trades={trades} />
 
         {/* Chatbot */}
         <ChatBot />
