@@ -5,13 +5,15 @@ import { useEffect, useState } from 'react'
 import PriceChart from '@/components/PriceChart'
 import SignalCard from '@/components/SignalCard'
 import PortfolioCard from '@/components/PortfolioCard'
-import SentimentCard from '@/components/SentimentCard'
 import ChatBot from '@/components/ChatBot'
 import TradesTable from '@/components/TradesTable'
 import ServiceHealth from '@/components/ServiceHealth'
-import StatsRow from '@/components/StatsRow'
 import PortfolioChart from '@/components/PortfolioChart'
-
+import RSIChart from '@/components/RSIChart'
+import SignalHistory from '@/components/SignalHistory'
+import ConfidenceTrend from '@/components/ConfidenceTrend'
+import WinRate from '@/components/WinRate'
+import SentimentGauge from '@/components/SentimentGauge'
 export default function Dashboard() {
   const [btcPrice, setBtcPrice] = useState<any>(null)
   const [ethPrice, setEthPrice] = useState<any>(null)
@@ -70,7 +72,8 @@ const [btcP, ethP, btcSent, ethSent, tradesData] = await Promise.all([
           </div>
         </div>
         <ServiceHealth />
-        <StatsRow trades={trades} />
+        {/* Win Rate Statistics */}
+<WinRate trades={trades} />
         
         {/* Price Cards */}
         <div className="grid grid-cols-2 gap-4 mb-6">
@@ -93,19 +96,34 @@ const [btcP, ethP, btcSent, ethSent, tradesData] = await Promise.all([
             </p>
           </div>
         </div>
+        {/* RSI Charts */}
+<div className="grid grid-cols-2 gap-4 mb-6">
+  <RSIChart symbol="BTC-USDT" color="#f97316" label="BTC" />
+  <RSIChart symbol="ETH-USDT" color="#60a5fa" label="ETH" />
+</div>
 
+{/* Signal History + Confidence */}
+<div className="grid grid-cols-2 gap-4 mb-6">
+  <SignalHistory symbol="BTC/USDT" />
+  <SignalHistory symbol="ETH/USDT" />
+</div>
+
+<div className="grid grid-cols-2 gap-4 mb-6">
+  <ConfidenceTrend symbol="BTC/USDT" color="#f97316" />
+  <ConfidenceTrend symbol="ETH/USDT" color="#60a5fa" />
+</div>
         {/* Charts */}
         <div className="grid grid-cols-2 gap-4 mb-6">
           <PriceChart symbol="BTC-USDT" color="#f97316" label="BTC" />
           <PriceChart symbol="ETH-USDT" color="#60a5fa" label="ETH" />
         </div>
 
-        {/* Signals + Sentiment */}
-        <div className="grid grid-cols-3 gap-4 mb-6">
-          <SignalCard title="BTC Signal" signal={null} />
-          <SignalCard title="ETH Signal" signal={null} />
-          <SentimentCard btc={btcSentiment} eth={ethSentiment} />
-        </div>
+       {/* Signals + Sentiment Gauge */}
+<div className="grid grid-cols-3 gap-4 mb-6">
+  <SignalCard title="BTC Signal" signal={null} />
+  <SignalCard title="ETH Signal" signal={null} />
+  <SentimentGauge btc={btcSentiment} eth={ethSentiment} />
+</div>
 
         {/* Portfolio */}
 <div className="grid grid-cols-2 gap-4 mb-6">
