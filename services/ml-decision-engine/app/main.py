@@ -7,12 +7,12 @@ from typing import Dict
 from app.predictor import predict
 from app.publisher import publish_signal
 from app.scheduler import start_scheduler
-from app.config import SUPPORTED_SYMBOLS, HOST, PORT
+from app.config import SUPPORTED_SYMBOLS, HOST, PORT, DATABASE_URL
 
 app = FastAPI(
     title="ML Decision Engine",
     description="Generates buy/sell/hold signals using best models",
-    version="1.0.0"
+    version="2.0.0"
 )
 
 app.add_middleware(
@@ -25,6 +25,21 @@ app.add_middleware(
 
 scheduler = None
 
+def save_signal_to_db(symbol, signal, confidence, model, price, rsi=None):
+    try:
+        import psycopg2
+        conn = psycopg2.connect(DATABASE_URL)
+        cursor = conn.cursor()
+        cursor.execute("""
+            INSERT INTO signals (symbol, signal, confidence, model, price, rsi, source)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
+        """, (symbol, signal, confidence, model, price, rsi, 'ml-engine'))
+        conn.commit()
+        cursor.close()
+        conn.close()
+    except Exception as e:
+        print(f"[ML Engine] Failed to log signal: {e}")
+
 @app.on_event("startup")
 def startup():
     global scheduler
@@ -36,7 +51,6 @@ def shutdown():
     global scheduler
     if scheduler:
         scheduler.shutdown()
-        print("Scheduler stopped!")
 
 class PredictRequest(BaseModel):
     symbol: str
@@ -53,12 +67,21 @@ def get_symbols():
 @app.post("/predict")
 def get_prediction(request: PredictRequest, publish: bool = True):
     if request.symbol not in SUPPORTED_SYMBOLS:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Symbol {request.symbol} not supported"
-        )
+        raise HTTPException(status_code=400,
+                           detail=f"Symbol {request.symbol} not supported")
     try:
         result = predict(request.symbol, request.features)
+
+        # Always log signal to DB regardless of publish flag
+        save_signal_to_db(
+            symbol=request.symbol,
+            signal=result['signal'],
+            confidence=result['confidence'],
+            model=result['model'],
+            price=request.features.get('close_lag_1', 0),
+            rsi=request.features.get('rsi', None)
+
+        )
 
         if publish:
             publish_signal({
@@ -75,10 +98,9 @@ def get_prediction(request: PredictRequest, publish: bool = True):
 
 @app.post("/trigger-signals")
 def trigger_signals():
-    """Manually trigger signal generation — useful for testing"""
     from app.scheduler import generate_and_publish_signals
     generate_and_publish_signals()
-    return {"message": "Signals generated and published to queue"}
+    return {"message": "Signals generated and published"}
 
 if __name__ == "__main__":
     uvicorn.run("app.main:app", host=HOST, port=PORT, reload=True)

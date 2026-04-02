@@ -97,3 +97,94 @@ def get_all_trades(symbol: str = None, limit: int = 50):
     cursor.close()
     conn.close()
     return [dict(t) for t in trades]
+
+def get_last_buy_time(symbol: str):
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT executed_at FROM trades
+        WHERE symbol = %s AND signal = 'BUY'
+        ORDER BY executed_at DESC
+        LIMIT 1
+    """, (symbol,))
+    result = cursor.fetchone()
+    cursor.close()
+    conn.close()
+    return result[0] if result else None
+
+def get_avg_buy_price(symbol: str) -> float:
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT price FROM trades
+        WHERE symbol = %s AND signal = 'BUY'
+        ORDER BY executed_at DESC
+        LIMIT 1
+    """, (symbol,))
+    result = cursor.fetchone()
+    cursor.close()
+    conn.close()
+    return float(result[0]) if result and result[0] else 0.0
+
+def init_signals_table():
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS signals (
+            id          SERIAL PRIMARY KEY,
+            symbol      VARCHAR(20),
+            signal      VARCHAR(10),
+            confidence  FLOAT,
+            model       VARCHAR(50),
+            price       FLOAT,
+            rsi         FLOAT,
+            source      VARCHAR(20),
+            created_at  TIMESTAMP DEFAULT NOW()
+        )
+    """)
+    conn.commit()
+    cursor.close()
+    conn.close()
+
+def save_signal(signal: dict):
+    conn = get_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("""
+            INSERT INTO signals
+            (symbol, signal, confidence, model, price, rsi, source)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
+        """, (
+            signal.get('symbol'),
+            signal.get('signal'),
+            signal.get('confidence'),
+            signal.get('model'),
+            signal.get('price'),
+            signal.get('rsi'),
+            signal.get('source', 'executor')
+        ))
+        conn.commit()
+    except Exception as e:
+        conn.rollback()
+        print(f"Error saving signal: {e}")
+    finally:
+        cursor.close()
+        conn.close()
+
+def get_signals(symbol: str = None, limit: int = 100):
+    conn = get_connection()
+    cursor = conn.cursor(cursor_factory=RealDictCursor)
+    if symbol:
+        cursor.execute("""
+            SELECT * FROM signals WHERE symbol = %s
+            ORDER BY created_at DESC LIMIT %s
+        """, (symbol, limit))
+    else:
+        cursor.execute("""
+            SELECT * FROM signals
+            ORDER BY created_at DESC LIMIT %s
+        """, (limit,))
+    results = cursor.fetchall()
+    cursor.close()
+    conn.close()
+    return [dict(r) for r in results]

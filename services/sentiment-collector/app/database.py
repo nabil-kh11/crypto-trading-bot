@@ -87,7 +87,7 @@ def get_sentiment_summary(asset: str):
             SUM(CASE WHEN sentiment_label = 'NEUTRAL'  THEN 1 ELSE 0 END) as neutral
         FROM sentiment_posts
         WHERE asset = %s
-        AND scraped_at > NOW() - INTERVAL '24 hours'
+        AND scraped_at > NOW() - INTERVAL '30 days'
         GROUP BY asset
     """, (asset,))
     result = cursor.fetchone()

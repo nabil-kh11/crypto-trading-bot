@@ -15,8 +15,6 @@ import PortfolioChart from '@/components/PortfolioChart'
 export default function Dashboard() {
   const [btcPrice, setBtcPrice] = useState<any>(null)
   const [ethPrice, setEthPrice] = useState<any>(null)
-  const [btcPortfolio, setBtcPortfolio] = useState<any>(null)
-  const [ethPortfolio, setEthPortfolio] = useState<any>(null)
   const [btcSentiment, setBtcSentiment] = useState<any>(null)
   const [ethSentiment, setEthSentiment] = useState<any>(null)
   const [trades, setTrades] = useState<any[]>([])
@@ -27,20 +25,17 @@ export default function Dashboard() {
     const safeFetch = (url: string) => 
       fetch(url).then(r => r.json()).catch(() => null)
 
-    const [btcP, ethP, btcPort, ethPort, btcSent, ethSent, tradesData] = await Promise.all([
-      safeFetch('http://localhost:8001/price/BTC-USDT'),
-      safeFetch('http://localhost:8001/price/ETH-USDT'),
-      safeFetch('http://localhost:8004/portfolio/BTC'),
-      safeFetch('http://localhost:8004/portfolio/ETH'),
-      safeFetch('http://localhost:8003/summary/BTC'),
-      safeFetch('http://localhost:8003/summary/ETH'),
-      safeFetch('http://localhost:8004/trades?limit=50'),
-    ])
+const [btcP, ethP, btcSent, ethSent, tradesData] = await Promise.all([
+  safeFetch('http://localhost:8001/price/BTC-USDT'),
+  safeFetch('http://localhost:8001/price/ETH-USDT'),
+  safeFetch('http://localhost:8003/summary/BTC'),
+  safeFetch('http://localhost:8003/summary/ETH'),
+  safeFetch('http://localhost:8004/trades?limit=50'),
+])
 
     if (btcP) setBtcPrice(btcP)
     if (ethP) setEthPrice(ethP)
-    if (btcPort) setBtcPortfolio(btcPort)
-    if (ethPort) setEthPortfolio(ethPort)
+
     if (btcSent) setBtcSentiment(btcSent)
     if (ethSent) setEthSentiment(ethSent)
     if (tradesData) setTrades(tradesData.trades || [])
@@ -113,10 +108,10 @@ export default function Dashboard() {
         </div>
 
         {/* Portfolio */}
-        <div className="grid grid-cols-2 gap-4 mb-6">
-          <PortfolioCard title="BTC Portfolio" data={btcPortfolio} price={btcPrice?.price} />
-          <PortfolioCard title="ETH Portfolio" data={ethPortfolio} price={ethPrice?.price} />
-        </div>
+<div className="grid grid-cols-2 gap-4 mb-6">
+  <PortfolioCard title="BTC Portfolio" asset="BTC" price={btcPrice?.price} />
+  <PortfolioCard title="ETH Portfolio" asset="ETH" price={ethPrice?.price} />
+</div>
 
         {/* Trades Table */}
         <TradesTable trades={trades} />

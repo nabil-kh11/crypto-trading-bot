@@ -8,7 +8,7 @@ export default function SignalCard({ title }: { title: string, signal: any }) {
 
   useEffect(() => {
     const fetchSignal = () => {
-      fetch(`http://localhost:8004/execute/${symbol}`, { method: 'POST' })
+      fetch(`http://localhost:8004/signal/${symbol}`, { method: 'GET' })
         .then(r => r.json())
         .then(setData)
     }
@@ -34,8 +34,7 @@ export default function SignalCard({ title }: { title: string, signal: any }) {
         Confidence: {data?.confidence?.toFixed(1) || '---'}%
       </p>
       <p className="text-gray-500 text-xs">
-       Model: {data?.model || '---'}
-
+        Model: {data?.model || '---'}
       </p>
       <p className="text-gray-600 text-xs mt-1">
         Price: ${data?.price?.toLocaleString() || '---'}

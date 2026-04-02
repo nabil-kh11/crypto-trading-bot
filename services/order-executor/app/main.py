@@ -1,15 +1,16 @@
 import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.database import init_db, get_all_trades, get_portfolio
+from app.database import init_db, init_signals_table, get_all_trades, get_signals
 from app.executor import execute_trade
 from app.consumer import start_consumer_thread
+from app.binance_executor import get_testnet_balance
 from app.config import HOST, PORT
 
 app = FastAPI(
     title="Order Executor",
-    description="Paper trading execution service with RabbitMQ and capital management",
-    version="1.0.0"
+    description="Paper trading execution service with Binance Testnet",
+    version="2.0.0"
 )
 
 app.add_middleware(
@@ -23,8 +24,9 @@ app.add_middleware(
 @app.on_event("startup")
 def startup():
     init_db()
+    init_signals_table()
     start_consumer_thread()
-    print("Order Executor started with RabbitMQ consumer!")
+    print("Order Executor started!")
 
 @app.get("/health")
 def health():
@@ -35,20 +37,93 @@ def execute(symbol: str):
     symbol = symbol.replace("-", "/").upper()
     return execute_trade(symbol)
 
+@app.get("/signal/{symbol}")
+def get_signal_only(symbol: str):
+    """Get ML signal without executing — ML Engine logs the signal"""
+    symbol = symbol.replace("-", "/").upper()
+    try:
+        from app.executor import get_latest_candle, get_ml_signal, get_latest_price
+        candle = get_latest_candle(symbol)
+        if not candle:
+            return {"signal": "UNKNOWN", "confidence": 0, "price": 0}
+        signal_data = get_ml_signal(symbol, candle)
+        price = get_latest_price(symbol)
+        if not signal_data:
+            return {"signal": "UNKNOWN", "confidence": 0, "price": price}
+        return {
+            "signal":     signal_data['signal'],
+            "confidence": signal_data['confidence'],
+            "model":      signal_data.get('model', 'Unknown'),
+            "price":      price
+        }
+    except Exception as e:
+        return {"signal": "ERROR", "confidence": 0, "price": 0, "error": str(e)}
+    symbol = symbol.replace("-", "/").upper()
+    try:
+        from app.executor import get_latest_candle, get_ml_signal, get_latest_price
+        candle = get_latest_candle(symbol)
+        if not candle:
+            return {"signal": "UNKNOWN", "confidence": 0, "price": 0}
+        signal_data = get_ml_signal(symbol, candle)
+        price = get_latest_price(symbol)
+        if not signal_data:
+            return {"signal": "UNKNOWN", "confidence": 0, "price": price}
+        return {
+            "signal":     signal_data['signal'],
+            "confidence": signal_data['confidence'],
+            "model":      signal_data.get('model', 'Unknown'),
+            "price":      price
+        }
+    except Exception as e:
+        return {"signal": "ERROR", "confidence": 0, "price": 0, "error": str(e)}
+    symbol = symbol.replace("-", "/").upper()
+    try:
+        from app.executor import get_latest_candle, get_ml_signal, get_latest_price
+        from app.database import save_signal
+        candle = get_latest_candle(symbol)
+        if not candle:
+            return {"signal": "UNKNOWN", "confidence": 0, "price": 0}
+        signal_data = get_ml_signal(symbol, candle)
+        price = get_latest_price(symbol)
+        if not signal_data:
+            return {"signal": "UNKNOWN", "confidence": 0, "price": price}
+        
+        # Save signal to database
+        save_signal({
+            "symbol":     symbol,
+            "signal":     signal_data['signal'],
+            "confidence": signal_data['confidence'],
+            "model":      signal_data.get('model', 'Unknown'),
+            "price":      price,
+            "rsi":        candle.get('rsi', 0),
+            "source":     "dashboard"
+        })
+        
+        return {
+            "signal":     signal_data['signal'],
+            "confidence": signal_data['confidence'],
+            "model":      signal_data.get('model', 'Unknown'),
+            "price":      price
+        }
+    except Exception as e:
+        return {"signal": "ERROR", "confidence": 0, "price": 0, "error": str(e)}
+
+@app.get("/signals")
+def get_signals_history(symbol: str = None, limit: int = 100):
+    return {"signals": get_signals(symbol=symbol, limit=limit)}
+
+@app.get("/balance")
+def get_balance():
+    return {
+        "source": "Binance Testnet",
+        "USDT": get_testnet_balance('USDT'),
+        "BTC":  get_testnet_balance('BTC'),
+        "ETH":  get_testnet_balance('ETH'),
+    }
+
 @app.get("/trades")
 def get_trades(symbol: str = None, limit: int = 50):
     return {"trades": get_all_trades(symbol=symbol, limit=limit)}
-
-@app.get("/portfolio/{symbol}")
-def portfolio(symbol: str):
-    symbol = symbol.upper()
-    # Handle both "BTC" and "BTC/USDT" formats
-    if "/" not in symbol:
-        symbol = symbol + "/USDT"
-    data = get_portfolio(symbol)
-    if not data:
-        return {"message": f"No portfolio found for {symbol}"}
-    return data
 
 @app.get("/symbols")
 def symbols():

@@ -9,10 +9,12 @@ import datetime
 logger = logging.getLogger(__name__)
 
 FEATURE_COLS = [
-    'ma20', 'ma50', 'rsi', 'returns', 'vol_20',
+    'ma20', 'ma50', 'ma200', 'rsi', 'returns', 'vol_20',
     'macd', 'macd_signal', 'macd_diff',
-    'bb_high', 'bb_low', 'bb_mid', 'bb_width',
+    'bb_high', 'bb_low', 'bb_mid', 'bb_width', 'bb_pct',
     'atr', 'stoch_rsi', 'stoch_rsi_k', 'stoch_rsi_d',
+    'volume_ratio', 'dist_ma200', 'dist_ma50',
+    'hour', 'day_of_week',
     'close_lag_1', 'returns_lag_1',
     'close_lag_2', 'returns_lag_2',
     'close_lag_3', 'returns_lag_3',
@@ -68,14 +70,14 @@ def start_scheduler():
     scheduler.add_job(
         generate_and_publish_signals,
         trigger='interval',
-        hours=1,
+        minutes=1,
         id='signal_generator',
-        name='Generate and publish ML signals',
+        name='Generate and publish ML signals every 1 minutes',
         replace_existing=True
     )
     
     scheduler.start()
-    print("[Scheduler] Started — signals will be published every hour")
+    print("[Scheduler] Started — signals will be published every 1 minutes")
     
     # Run immediately on startup
     generate_and_publish_signals()
