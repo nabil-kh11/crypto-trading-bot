@@ -13,20 +13,30 @@ ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, T
 export default function PriceChart({ symbol, color, label }: { symbol: string, color: string, label: string }) {
   const [chartData, setChartData] = useState<any>(null)
 
-  useEffect(() => {
-    fetch(`http://localhost:8001/ohlcv/${symbol}?limit=200`)
+useEffect(() => {
+    fetch(`http://localhost:8001/ohlcv/${symbol}?limit=24`)
       .then(r => r.json())
       .then(data => {
         if (!data || data.length === 0) return
         setChartData({
-          labels: data.map((d: any) => new Date(d.timestamp).toLocaleTimeString()),
+          labels: data.map((d: any) => {
+            const date = new Date(d.timestamp)
+            return date.toLocaleString('fr-TN', {
+              timeZone: 'Africa/Tunis',
+              month: '2-digit',
+              day: '2-digit',
+              hour: '2-digit',
+              minute: '2-digit',
+              hour12: false
+            })
+          }),
           datasets: [{
             label: `${label} Price`,
             data: data.map((d: any) => d.close),
             borderColor: color,
             backgroundColor: color + '20',
             borderWidth: 2,
-            pointRadius: 0,
+            pointRadius: 3,
             fill: true,
             tension: 0.4,
           }]
@@ -38,14 +48,14 @@ export default function PriceChart({ symbol, color, label }: { symbol: string, c
     responsive: true,
     plugins: { legend: { display: false } },
     scales: {
-      x: { ticks: { color: '#9ca3af', maxTicksLimit: 6 }, grid: { color: '#1f2937' } },
+      x: { ticks: { color: '#9ca3af', maxTicksLimit: 8 }, grid: { color: '#1f2937' } },
       y: { ticks: { color: '#9ca3af' }, grid: { color: '#1f2937' } }
     }
   }
 
   return (
     <div className="bg-gray-900 rounded-xl p-4 border border-gray-800">
-      <p className="text-gray-400 text-sm mb-2">{label} Price Chart (last 200 candles)</p>
+      <p className="text-gray-400 text-sm mb-2">{label} Price Chart (last 24h)</p>
       {chartData ? <Line data={chartData} options={options} /> : (
         <div className="h-40 flex items-center justify-center text-gray-600">Loading...</div>
       )}
