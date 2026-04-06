@@ -2,11 +2,14 @@ import os
 from dotenv import load_dotenv
 from pathlib import Path
 
-load_dotenv(Path(__file__).resolve().parents[3] / '.env')
+load_dotenv('/app/.env')
 DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:admin@localhost:5432/cryptobot")
-BTC_MODEL_PATH  = os.getenv("BTC_MODEL_PATH",  "../../data/models/best_btc.joblib")
+""" BTC_MODEL_PATH  = os.getenv("BTC_MODEL_PATH",  "../../data/models/best_btc.joblib")
 ETH_MODEL_PATH  = os.getenv("ETH_MODEL_PATH",  "../../data/models/best_eth.joblib")
-BTC_SCALER_PATH = os.getenv("BTC_SCALER_PATH", "../../data/models/best_btc_scaler.joblib")
+BTC_SCALER_PATH = os.getenv("BTC_SCALER_PATH", "../../data/models/best_btc_scaler.joblib") """
+BTC_MODEL_PATH  = os.getenv("BTC_MODEL_PATH",  "/app/data/models/best_btc.joblib")
+ETH_MODEL_PATH  = os.getenv("ETH_MODEL_PATH",  "/app/data/models/best_eth.joblib")
+BTC_SCALER_PATH = os.getenv("BTC_SCALER_PATH", "/app/data/models/best_btc_scaler.joblib")
 
 RABBITMQ_URL    = os.getenv("RABBITMQ_URL", "amqp://guest:guest@localhost:5672/")
 QUEUE_NAME      = "trading_signals"

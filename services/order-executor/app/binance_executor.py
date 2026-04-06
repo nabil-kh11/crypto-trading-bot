@@ -1,10 +1,11 @@
 import ccxt
 import os
 from dotenv import load_dotenv
-from pathlib import Path
+
 
 # Load .env from project root
-load_dotenv(Path(__file__).resolve().parents[3] / '.env')
+load_dotenv('/app/.env')
+
 
 BINANCE_TESTNET_API_KEY    = os.getenv("BINANCE_TESTNET_API_KEY", "")
 BINANCE_TESTNET_SECRET_KEY = os.getenv("BINANCE_TESTNET_SECRET_KEY", "")

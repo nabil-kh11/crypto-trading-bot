@@ -1,0 +1,145 @@
+version: "3.8"
+
+services:
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:15
+    container_name: postgres
+    ports:
+      - "5433:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: admin
+      POSTGRES_DB: cryptobot
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  market-data-collector:
+    build: ./services/market-data-collector
+    container_name: market-data-collector
+    ports:
+      - "8001:8001"
+    environment:
+      - HOST=0.0.0.0
+      - PORT=8001
+    volumes:
+      - .env:/app/.env
+    restart: unless-stopped
+
+  ml-decision-engine:
+    build:
+      context: .
+      dockerfile: services/ml-decision-engine/Dockerfile
+    container_name: ml-decision-engine
+    ports:
+      - "8002:8002"
+    environment:
+      - HOST=0.0.0.0
+      - PORT=8002
+      - RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672/
+      - DATABASE_URL=postgresql://postgres:admin@postgres:5432/cryptobot
+      - MARKET_DATA_URL=http://market-data-collector:8001
+    volumes:
+      - .env:/app/.env
+      - ./data/models:/app/data/models
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  sentiment-collector:
+    build: ./services/sentiment-collector
+    container_name: sentiment-collector
+    ports:
+      - "8003:8003"
+    environment:
+      - HOST=0.0.0.0
+      - PORT=8003
+      - DATABASE_URL=postgresql://postgres:admin@postgres:5432/cryptobot
+    volumes:
+      - .env:/app/.env
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  order-executor:
+    build: ./services/order-executor
+    container_name: order-executor
+    ports:
+      - "8004:8004"
+    environment:
+      - HOST=0.0.0.0
+      - PORT=8004
+      - DATABASE_URL=postgresql://postgres:admin@postgres:5432/cryptobot
+      - RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672/
+      - ML_ENGINE_URL=http://ml-decision-engine:8002
+      - MARKET_DATA_URL=http://market-data-collector:8001
+      - BINANCE_TESTNET_API_KEY=${BINANCE_TESTNET_API_KEY}
+      - BINANCE_TESTNET_SECRET_KEY=${BINANCE_TESTNET_SECRET_KEY}
+      - USE_TESTNET=true
+      - MIN_CONFIDENCE=50.0
+    volumes:
+      - .env:/app/.env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    restart: unless-stopped
+
+  chatbot:
+    build: ./services/chatbot
+    container_name: chatbot
+    ports:
+      - "8005:8005"
+    environment:
+      - HOST=0.0.0.0
+      - PORT=8005
+      - DATABASE_URL=postgresql://postgres:admin@postgres:5432/cryptobot
+      - GROQ_API_KEY=${GROQ_API_KEY}
+    volumes:
+      - .env:/app/.env
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  dashboard:
+    build: ./services/dashboard
+    container_name: dashboard
+    ports:
+      - "3000:3000"
+    depends_on:
+      - market-data-collector
+      - ml-decision-engine
+      - sentiment-collector
+      - order-executor
+      - chatbot
+    restart: unless-stopped
+
+volumes:
+  postgres_data:

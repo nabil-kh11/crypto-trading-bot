@@ -2,7 +2,7 @@ import os
 from dotenv import load_dotenv
 from pathlib import Path
 
-load_dotenv(Path(__file__).resolve().parents[3] / '.env')
+load_dotenv('/app/.env')
 
 SYMBOLS     = ["BTC/USDT", "ETH/USDT"]
 TIMEFRAME   = "1h"
