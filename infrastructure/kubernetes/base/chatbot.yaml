@@ -1,0 +1,38 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: chatbot
+  namespace: crypto-trading-bot
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: chatbot
+  template:
+    metadata:
+      labels:
+        app: chatbot
+    spec:
+      containers:
+      - name: chatbot
+        image: crypto-trading-bot-chatbot:latest
+        imagePullPolicy: Never
+        ports:
+        - containerPort: 8005
+        envFrom:
+        - configMapRef:
+            name: app-config
+        - secretRef:
+            name: app-secrets
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: chatbot
+  namespace: crypto-trading-bot
+spec:
+  selector:
+    app: chatbot
+  ports:
+  - port: 8005
+    targetPort: 8005

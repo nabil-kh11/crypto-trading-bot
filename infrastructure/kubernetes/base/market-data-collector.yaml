@@ -1,0 +1,38 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: market-data-collector
+  namespace: crypto-trading-bot
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: market-data-collector
+  template:
+    metadata:
+      labels:
+        app: market-data-collector
+    spec:
+      containers:
+      - name: market-data-collector
+        image: crypto-trading-bot-market-data-collector:latest
+        imagePullPolicy: Never
+        ports:
+        - containerPort: 8001
+        env:
+        - name: HOST
+          value: "0.0.0.0"
+        - name: PORT
+          value: "8001"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: market-data-collector
+  namespace: crypto-trading-bot
+spec:
+  selector:
+    app: market-data-collector
+  ports:
+  - port: 8001
+    targetPort: 8001

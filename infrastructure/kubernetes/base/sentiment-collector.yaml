@@ -1,0 +1,36 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sentiment-collector
+  namespace: crypto-trading-bot
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: sentiment-collector
+  template:
+    metadata:
+      labels:
+        app: sentiment-collector
+    spec:
+      containers:
+      - name: sentiment-collector
+        image: crypto-trading-bot-sentiment-collector:latest
+        imagePullPolicy: Never
+        ports:
+        - containerPort: 8003
+        envFrom:
+        - configMapRef:
+            name: app-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: sentiment-collector
+  namespace: crypto-trading-bot
+spec:
+  selector:
+    app: sentiment-collector
+  ports:
+  - port: 8003
+    targetPort: 8003

@@ -62,22 +62,25 @@ def get_ml_signal(symbol: str, candle: dict) -> dict:
         return None
 
 def calculate_buy_size(usdt_balance: float, confidence: float) -> float:
-    """Position sizing: 2-20% of capital based on confidence"""
-    if confidence < MIN_CONFIDENCE:
-        return 0
-    confidence_factor = (confidence - 50) / 50
-    base_risk = 0.02
-    max_risk  = 0.20
-    position_pct  = base_risk + (confidence_factor * (max_risk - base_risk))
+    """
+    Confidence controls position size — never skips signal completely
+    Range: 1% to 20% of capital based on confidence
+    """
+    min_pct = 0.01   # 1% minimum always
+    max_pct = 0.20   # 20% maximum
+    position_pct = min_pct + (confidence / 100) * (max_pct - min_pct)
     position_size = usdt_balance * position_pct
-    print(f"[Strategy] Confidence {confidence}% → invest {position_pct*100:.1f}% = ${position_size:.2f}")
+    print(f"[Strategy] Confidence {confidence:.1f}% → invest {position_pct*100:.1f}% = ${position_size:.2f}")
     return round(position_size, 2)
 
 def calculate_sell_size(asset_balance: float, confidence: float,
                         avg_buy_price: float, current_price: float) -> float:
-    """Sell size based on profit level and confidence"""
+    """
+    Sell size based on profit level — always sells something on SELL signal
+    """
     if asset_balance <= 0:
         return 0
+
     pnl_pct = ((current_price - avg_buy_price) / avg_buy_price * 100) if avg_buy_price > 0 else 0
 
     if pnl_pct > 20 and confidence > 70:
@@ -89,7 +92,7 @@ def calculate_sell_size(asset_balance: float, confidence: float,
     elif pnl_pct > 0:
         sell_pct = 0.25
     else:
-        sell_pct = 0.10
+        sell_pct = 0.10  # Always sell at least 10% on SELL signal
 
     sell_amount = asset_balance * sell_pct
     print(f"[Strategy] P&L={pnl_pct:.1f}% → sell {sell_pct*100:.0f}% = {sell_amount:.6f}")
@@ -153,6 +156,155 @@ def check_min_hold_time(symbol: str) -> bool:
     return True
 
 def execute_trade(symbol: str) -> dict:
+    asset = symbol.split('/')[0]
+
+    try:
+        usdt_balance  = get_testnet_balance('USDT')
+        asset_balance = get_testnet_balance(asset)
+        price         = get_latest_price(symbol)
+        candle        = get_latest_candle(symbol)
+
+        if not candle:
+            return {"status": "error", "message": "Could not get market data"}
+
+        signal_data = get_ml_signal(symbol, candle)
+        if not signal_data:
+            return {"status": "error", "message": "Could not get ML signal"}
+
+        signal     = signal_data['signal']
+        confidence = signal_data['confidence']
+        model      = signal_data.get('model', 'Unknown')
+
+        # Log signal
+        from app.database import save_signal
+        save_signal({
+            "symbol": symbol, "signal": signal,
+            "confidence": confidence, "model": model,
+            "price": price, "rsi": candle.get('rsi', 0),
+            "source": "executor"
+        })
+
+        print(f"[Executor] {symbol} | {signal} ({confidence:.1f}%) | "
+              f"USDT={usdt_balance:.2f} | {asset}={asset_balance:.6f}")
+
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+    avg_buy_price = get_avg_buy_price(symbol)
+
+    # ── STOP-LOSS (overrides everything) ─────────────────
+    if asset_balance > 0.001 and check_stop_loss(avg_buy_price, price):
+        sell_amount = asset_balance
+        testnet_result = place_market_sell(symbol, sell_amount)
+        if testnet_result['success']:
+            save_trade({
+                "symbol": symbol, "signal": "SELL",
+                "confidence": 100.0, "price": testnet_result['price'],
+                "quantity": testnet_result['quantity'],
+                "capital_before": 0.0,
+                "capital_after": sell_amount * testnet_result['price'],
+                "position_value": 0.0,
+                "trade_type": "STOP_LOSS", "status": "EXECUTED"
+            })
+            return {
+                "status": "stop_loss_executed",
+                "reason": "Stop-loss triggered (-5%)",
+                "price": testnet_result['price'],
+                "usdt_after": get_testnet_balance('USDT')
+            }
+
+    # ── BUY ──────────────────────────────────────────────
+    if signal == "BUY" and usdt_balance > 10:
+
+        if not check_trend_filter(candle, 'BUY'):
+            return {"status": "filtered", "reason": "Downtrend — BUY blocked",
+                    "signal": signal, "price": price}
+
+        if not check_rsi_filter(candle, 'BUY'):
+            return {"status": "filtered", "reason": "Overbought — BUY blocked",
+                    "signal": signal, "price": price}
+
+        # Confidence controls size — never skips
+        invest_amount = calculate_buy_size(usdt_balance, confidence)
+
+        if invest_amount < 5:
+            return {"status": "skipped", "reason": "Amount too small"}
+
+        testnet_result = place_market_buy(symbol, invest_amount)
+        if testnet_result['success']:
+            save_trade({
+                "symbol": symbol, "signal": signal,
+                "confidence": confidence,
+                "price": testnet_result['price'],
+                "quantity": testnet_result['quantity'],
+                "capital_before": usdt_balance,
+                "capital_after": usdt_balance - invest_amount,
+                "position_value": testnet_result['quantity'] * testnet_result['price'],
+                "trade_type": "TESTNET", "status": "EXECUTED"
+            })
+            return {
+                "status": "executed", "signal": "BUY",
+                "model": model, "invested": invest_amount,
+                "quantity": testnet_result['quantity'],
+                "price": testnet_result['price'],
+                "usdt_after": get_testnet_balance('USDT'),
+                f"{asset.lower()}_after": get_testnet_balance(asset)
+            }
+        else:
+            return {"status": "error", "message": testnet_result['error']}
+
+    # ── SELL ─────────────────────────────────────────────
+    elif signal == "SELL" and asset_balance > 0.001:
+
+        if not check_min_hold_time(symbol):
+            return {"status": "filtered",
+                    "reason": f"Min hold time not reached",
+                    "signal": signal, "price": price}
+
+        if not check_trend_filter(candle, 'SELL'):
+            return {"status": "filtered", "reason": "Uptrend — SELL blocked",
+                    "signal": signal, "price": price}
+
+        if not check_rsi_filter(candle, 'SELL'):
+            return {"status": "filtered", "reason": "Oversold — SELL blocked",
+                    "signal": signal, "price": price}
+
+        sell_amount = calculate_sell_size(asset_balance, confidence,
+                                          avg_buy_price, price)
+
+        if sell_amount < 0.0001:
+            return {"status": "skipped", "reason": "Sell amount too small"}
+
+        testnet_result = place_market_sell(symbol, sell_amount)
+        if testnet_result['success']:
+            save_trade({
+                "symbol": symbol, "signal": signal,
+                "confidence": confidence,
+                "price": testnet_result['price'],
+                "quantity": testnet_result['quantity'],
+                "capital_before": 0.0,
+                "capital_after": sell_amount * testnet_result['price'],
+                "position_value": (asset_balance - sell_amount) * price,
+                "trade_type": "TESTNET", "status": "EXECUTED"
+            })
+            return {
+                "status": "executed", "signal": "SELL",
+                "model": model, "sold": sell_amount,
+                "price": testnet_result['price'],
+                "usdt_after": get_testnet_balance('USDT'),
+                f"{asset.lower()}_after": get_testnet_balance(asset)
+            }
+        else:
+            return {"status": "error", "message": testnet_result['error']}
+
+    # ── HOLD ─────────────────────────────────────────────
+    else:
+        return {
+            "status": "hold", "signal": signal,
+            "confidence": confidence, "model": model,
+            "price": price, "usdt": usdt_balance,
+            f"{asset.lower()}": asset_balance
+        }
     asset = symbol.split('/')[0]
 
     try:

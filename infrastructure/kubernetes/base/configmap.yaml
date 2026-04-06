@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-config
+  namespace: crypto-trading-bot
+data:
+  RABBITMQ_URL: "amqp://guest:guest@rabbitmq:5672/"
+  DATABASE_URL: "postgresql://postgres:admin@postgres:5432/cryptobot"
+  MARKET_DATA_URL: "http://market-data-collector:8001"
+  ML_ENGINE_URL: "http://ml-decision-engine:8002"
+  USE_TESTNET: "true"
+  MIN_CONFIDENCE: "50.0"
+  HOST: "0.0.0.0"

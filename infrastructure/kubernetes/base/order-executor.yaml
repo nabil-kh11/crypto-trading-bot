@@ -1,0 +1,38 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: order-executor
+  namespace: crypto-trading-bot
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: order-executor
+  template:
+    metadata:
+      labels:
+        app: order-executor
+    spec:
+      containers:
+      - name: order-executor
+        image: crypto-trading-bot-order-executor:latest
+        imagePullPolicy: Never
+        ports:
+        - containerPort: 8004
+        envFrom:
+        - configMapRef:
+            name: app-config
+        - secretRef:
+            name: app-secrets
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: order-executor
+  namespace: crypto-trading-bot
+spec:
+  selector:
+    app: order-executor
+  ports:
+  - port: 8004
+    targetPort: 8004

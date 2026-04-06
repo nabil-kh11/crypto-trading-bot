@@ -1,0 +1,36 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ml-decision-engine
+  namespace: crypto-trading-bot
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ml-decision-engine
+  template:
+    metadata:
+      labels:
+        app: ml-decision-engine
+    spec:
+      containers:
+      - name: ml-decision-engine
+        image: crypto-trading-bot-ml-decision-engine:latest
+        imagePullPolicy: Never
+        ports:
+        - containerPort: 8002
+        envFrom:
+        - configMapRef:
+            name: app-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ml-decision-engine
+  namespace: crypto-trading-bot
+spec:
+  selector:
+    app: ml-decision-engine
+  ports:
+  - port: 8002
+    targetPort: 8002

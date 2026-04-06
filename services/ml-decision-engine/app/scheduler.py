@@ -70,7 +70,7 @@ def start_scheduler():
     scheduler.add_job(
         generate_and_publish_signals,
         trigger='interval',
-        minutes=1,
+        minutes=2,
         id='signal_generator',
         name='Generate and publish ML signals every 1 minutes',
         replace_existing=True
