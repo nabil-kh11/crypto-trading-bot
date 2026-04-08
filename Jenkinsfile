@@ -17,7 +17,7 @@ pipeline {
         stage('Build') {
             steps {
                 echo 'Building Docker images...'
-                sh 'docker compose build'
+                sh 'docker-compose build'
             }
         }
         
@@ -64,7 +64,7 @@ pipeline {
         }
         failure {
             echo 'Pipeline failed!'
-            sh 'docker compose down'
+            sh 'docker-compose down'
         }
     }
 }
