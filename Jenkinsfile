@@ -17,24 +17,24 @@ pipeline {
         }
         
         stage('Build') {
-    steps {
-        echo 'Building Docker images...'
-        sh '''
-            docker-compose build market-data-collector
-            docker-compose build sentiment-collector
-            docker-compose build order-executor
-            docker-compose build chatbot
-            docker-compose build dashboard
-        '''
-        echo 'Skipping ml-decision-engine rebuild - using existing image with models'
-    }
-}
+            steps {
+                echo 'Building Docker images...'
+                sh '''
+                    docker-compose build market-data-collector
+                    docker-compose build sentiment-collector
+                    docker-compose build order-executor
+                    docker-compose build chatbot
+                    docker-compose build dashboard
+                '''
+                echo 'Skipping ml-decision-engine rebuild - using existing image with models'
+            }
+        }
         
         stage('Test') {
             steps {
                 echo 'Running service health checks...'
                 sh '''
-                    docker-compose up -d
+                    docker-compose up -d --no-recreate
                     sleep 30
                     docker-compose ps
                     echo "All services started successfully!"
