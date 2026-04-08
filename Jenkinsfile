@@ -17,11 +17,18 @@ pipeline {
         }
         
         stage('Build') {
-            steps {
-                echo 'Building Docker images...'
-                sh 'docker-compose build'
-            }
-        }
+    steps {
+        echo 'Building Docker images...'
+        sh '''
+            docker-compose build market-data-collector
+            docker-compose build sentiment-collector
+            docker-compose build order-executor
+            docker-compose build chatbot
+            docker-compose build dashboard
+        '''
+        echo 'Skipping ml-decision-engine rebuild - using existing image with models'
+    }
+}
         
         stage('Test') {
             steps {
