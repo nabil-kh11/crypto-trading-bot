@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
       - name: ml-decision-engine
-        image: crypto-trading-bot-ml-decision-engine:latest
+        image: docker.io/library/crypto-trading-bot-ml-decision-engine:latest
         imagePullPolicy: Never
         ports:
         - containerPort: 8002

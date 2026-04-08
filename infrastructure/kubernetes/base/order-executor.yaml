@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
       - name: order-executor
-        image: crypto-trading-bot-order-executor:latest
+        image: docker.io/library/crypto-trading-bot-order-executor:latest
         imagePullPolicy: Never
         ports:
         - containerPort: 8004

@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
       - name: dashboard
-        image: crypto-trading-bot-dashboard:latest
+        image: docker.io/library/crypto-trading-bot-dashboard:latest
         imagePullPolicy: Never
         ports:
         - containerPort: 3000

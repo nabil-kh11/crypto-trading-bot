@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
       - name: market-data-collector
-        image: crypto-trading-bot-market-data-collector:latest
+        image: docker.io/library/crypto-trading-bot-market-data-collector:latest
         imagePullPolicy: Never
         ports:
         - containerPort: 8001

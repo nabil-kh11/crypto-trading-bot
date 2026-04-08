@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
       - name: chatbot
-        image: crypto-trading-bot-chatbot:latest
+        image: docker.io/library/crypto-trading-bot-chatbot:latest
         imagePullPolicy: Never
         ports:
         - containerPort: 8005
@@ -35,4 +35,4 @@ spec:
     app: chatbot
   ports:
   - port: 8005
-    targetPort: 8005
+    targetPort: 8005 

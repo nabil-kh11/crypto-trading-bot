@@ -132,7 +132,7 @@ services:
     build: ./services/dashboard
     container_name: dashboard
     ports:
-      - "3000:3000"
+      - "33000:3000"
     depends_on:
       - market-data-collector
       - ml-decision-engine
