@@ -25,7 +25,7 @@ pipeline {
             steps {
                 echo 'Running service health checks...'
                 sh '''
-                    docker compose up -d
+                    docker-compose up -d
                     sleep 30
                     curl -f http://localhost:8001/health || exit 1
                     curl -f http://localhost:8002/health || exit 1
