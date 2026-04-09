@@ -6,12 +6,16 @@ from app.executor import execute_trade
 from app.consumer import start_consumer_thread
 from app.binance_executor import get_testnet_balance
 from app.config import HOST, PORT
+from prometheus_fastapi_instrumentator import Instrumentator
+
 
 app = FastAPI(
     title="Order Executor",
     description="Paper trading execution service with Binance Testnet",
     version="2.0.0"
 )
+Instrumentator().instrument(app).expose(app)
+
 
 app.add_middleware(
     CORSMiddleware,

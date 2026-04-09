@@ -12,6 +12,7 @@ app = FastAPI(
     description="Sentiment-aware crypto chatbot powered by Gemini and FAISS",
     version="1.0.0"
 )
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],

@@ -8,12 +8,15 @@ from app.predictor import predict
 from app.publisher import publish_signal
 from app.scheduler import start_scheduler
 from app.config import SUPPORTED_SYMBOLS, HOST, PORT, DATABASE_URL
+from prometheus_fastapi_instrumentator import Instrumentator
 
 app = FastAPI(
     title="ML Decision Engine",
     description="Generates buy/sell/hold signals using best models",
     version="2.0.0"
 )
+Instrumentator().instrument(app).expose(app)
+
 
 app.add_middleware(
     CORSMiddleware,

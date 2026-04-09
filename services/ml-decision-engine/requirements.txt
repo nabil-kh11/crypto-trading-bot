@@ -28,3 +28,4 @@ pika
 apscheduler
 starlette
 psycopg2-binary
+prometheus-fastapi-instrumentator 

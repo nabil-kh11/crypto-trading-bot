@@ -3,12 +3,14 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from app.collector import fetch_ohlcv, get_latest_price
 from app.config import SYMBOLS, PORT, HOST
-
+from prometheus_fastapi_instrumentator import Instrumentator
 app = FastAPI(
     title="Market Data Collector",
     description="Fetches real-time and historical OHLCV data from Binance",
     version="1.0.0"
 )
+Instrumentator().instrument(app).expose(app)
+
 
 app.add_middleware(
     CORSMiddleware,
