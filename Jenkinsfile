@@ -44,22 +44,23 @@ pipeline {
             }
         }
 
-stage('Code Quality — SonarQube') {
-    steps {
-        echo 'Running SonarQube analysis...'
-        sh '''
-            docker run --rm \
-                -e SONAR_HOST_URL="http://172.17.0.5:9000" \
-                -v "/var/jenkins_home/workspace/crypto-trading-bot:/usr/src" \
-                sonarsource/sonar-scanner-cli \
-                -Dsonar.projectKey=crypto-trading-bot \
-                -Dsonar.sources=services \
-                -Dsonar.inclusions="**/*.py,**/*.ts,**/*.tsx,**/*.js" \
-                -Dsonar.python.version=3.11 \
-                -Dsonar.token=sqp_8925d4034556b3d0174fb6794cbd2f582d8f5152
-        '''
-    }
-}
+        stage('Code Quality — SonarQube') {
+            steps {
+                echo 'Running SonarQube analysis...'
+                sh '''
+                    docker run --rm \
+                        -e SONAR_HOST_URL="http://172.17.0.5:9000" \
+                        -v "/var/jenkins_home/workspace/crypto-trading-bot:/usr/src" \
+                        sonarsource/sonar-scanner-cli \
+                        -Dsonar.projectKey=crypto-trading-bot \
+                        -Dsonar.sources=. \
+                        -Dsonar.exclusions="**/venv/**,**/node_modules/**,**/.git/**,**/data/**,**/__pycache__/**" \
+                        -Dsonar.inclusions="**/*.py,**/*.ts,**/*.tsx" \
+                        -Dsonar.python.version=3.11 \
+                        -Dsonar.token=sqp_8925d4034556b3d0174fb6794cbd2f582d8f5152
+                '''
+            }
+        }
         
         stage('Build') {
             steps {
