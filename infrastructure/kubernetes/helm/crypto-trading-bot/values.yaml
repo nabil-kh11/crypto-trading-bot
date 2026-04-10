@@ -66,3 +66,20 @@ postgres:
 # RabbitMQ
 rabbitmq:
   image: rabbitmq:3-management
+
+  # Add this to values.yaml
+resources:
+  mlDecisionEngine:
+    requests:
+      cpu: "100m"
+      memory: "256Mi"
+    limits:
+      cpu: "500m"
+      memory: "512Mi"
+  orderExecutor:
+    requests:
+      cpu: "100m"
+      memory: "128Mi"
+    limits:
+      cpu: "300m"
+      memory: "256Mi"

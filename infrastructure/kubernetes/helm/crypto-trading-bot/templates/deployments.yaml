@@ -56,6 +56,13 @@ spec:
         envFrom:
         - configMapRef:
             name: app-config
+        resources:
+          requests:
+            cpu: {{ .Values.resources.mlDecisionEngine.requests.cpu | quote }}
+            memory: {{ .Values.resources.mlDecisionEngine.requests.memory | quote }}
+          limits:
+            cpu: {{ .Values.resources.mlDecisionEngine.limits.cpu | quote }}
+            memory: {{ .Values.resources.mlDecisionEngine.limits.memory | quote }}
 ---
 # Sentiment Collector
 apiVersion: apps/v1
@@ -108,6 +115,13 @@ spec:
         envFrom:
         - configMapRef:
             name: app-config
+        resources:
+          requests:
+            cpu: {{ .Values.resources.orderExecutor.requests.cpu | quote }}
+            memory: {{ .Values.resources.orderExecutor.requests.memory | quote }}
+          limits:
+            cpu: {{ .Values.resources.orderExecutor.limits.cpu | quote }}
+            memory: {{ .Values.resources.orderExecutor.limits.memory | quote }}
 ---
 # Chatbot
 apiVersion: apps/v1
