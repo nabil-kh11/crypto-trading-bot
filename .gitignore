@@ -219,3 +219,9 @@ data/models/*.h5
 
 # Jupyter checkpoints
 notebooks/.ipynb_checkpoints/
+
+# Allow production models only
+!data/models/best_btc.joblib
+!data/models/best_btc_scaler.joblib
+!data/models/best_eth.joblib
+!data/models/best_eth_scaler.joblib
