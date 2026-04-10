@@ -16,6 +16,34 @@ pipeline {
             }
         }
 
+        stage('Detect Changes') {
+            steps {
+                script {
+                    def changes = sh(
+                        script: 'git diff --name-only HEAD~1 HEAD || git diff --name-only HEAD',
+                        returnStdout: true
+                    ).trim()
+                    
+                    echo "Changed files:\n${changes}"
+                    
+                    env.BUILD_MARKET_DATA    = changes.contains('services/market-data-collector') ? 'true' : 'false'
+                    env.BUILD_ML_ENGINE      = changes.contains('services/ml-decision-engine') ? 'true' : 'false'
+                    env.BUILD_SENTIMENT      = changes.contains('services/sentiment-collector') ? 'true' : 'false'
+                    env.BUILD_ORDER_EXECUTOR = changes.contains('services/order-executor') ? 'true' : 'false'
+                    env.BUILD_CHATBOT        = changes.contains('services/chatbot') ? 'true' : 'false'
+                    env.BUILD_DASHBOARD      = changes.contains('services/dashboard') ? 'true' : 'false'
+                    
+                    echo "Services to rebuild:"
+                    echo "  market-data-collector: ${env.BUILD_MARKET_DATA}"
+                    echo "  ml-decision-engine:    ${env.BUILD_ML_ENGINE}"
+                    echo "  sentiment-collector:   ${env.BUILD_SENTIMENT}"
+                    echo "  order-executor:        ${env.BUILD_ORDER_EXECUTOR}"
+                    echo "  chatbot:               ${env.BUILD_CHATBOT}"
+                    echo "  dashboard:             ${env.BUILD_DASHBOARD}"
+                }
+            }
+        }
+
         stage('Code Quality — SonarQube') {
             steps {
                 echo 'Running SonarQube analysis...'
@@ -33,15 +61,33 @@ pipeline {
         
         stage('Build') {
             steps {
-                echo 'Building Docker images...'
-                sh '''
-                    docker-compose build market-data-collector
-                    docker-compose build sentiment-collector
-                    docker-compose build order-executor
-                    docker-compose build chatbot
-                    docker-compose build dashboard
-                '''
-                echo 'Skipping ml-decision-engine rebuild - using existing image with models'
+                echo 'Building only changed services...'
+                script {
+                    if (env.BUILD_MARKET_DATA == 'true') {
+                        sh 'docker-compose build market-data-collector'
+                        echo '✓ Built market-data-collector'
+                    }
+                    if (env.BUILD_SENTIMENT == 'true') {
+                        sh 'docker-compose build sentiment-collector'
+                        echo '✓ Built sentiment-collector'
+                    }
+                    if (env.BUILD_ORDER_EXECUTOR == 'true') {
+                        sh 'docker-compose build order-executor'
+                        echo '✓ Built order-executor'
+                    }
+                    if (env.BUILD_CHATBOT == 'true') {
+                        sh 'docker-compose build chatbot'
+                        echo '✓ Built chatbot'
+                    }
+                    if (env.BUILD_DASHBOARD == 'true') {
+                        sh 'docker-compose build dashboard'
+                        echo '✓ Built dashboard'
+                    }
+                    if (env.BUILD_ML_ENGINE == 'true') {
+                        echo '⚠ ML engine changed but skipping rebuild to preserve models'
+                    }
+                    echo 'Build stage complete!'
+                }
             }
         }
         
