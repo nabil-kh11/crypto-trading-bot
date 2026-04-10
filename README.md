@@ -44,3 +44,4 @@ crypto-trading-bot/
 ```bash
 cp .env.example .env
 # Fill in your API keys in .env
+"# CI/CD Test" 
