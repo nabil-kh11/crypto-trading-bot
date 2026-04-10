@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-config
+  namespace: {{ .Values.namespace }}
+data:
+  RABBITMQ_URL: {{ .Values.config.rabbitmqUrl | quote }}
+  DATABASE_URL: {{ .Values.config.databaseUrl | quote }}
+  MARKET_DATA_URL: {{ .Values.config.marketDataUrl | quote }}
+  ML_ENGINE_URL: {{ .Values.config.mlEngineUrl | quote }}
+  USE_TESTNET: {{ .Values.config.useTestnet | quote }}
+  MIN_CONFIDENCE: {{ .Values.config.minConfidence | quote }}
+  HOST: "0.0.0.0"

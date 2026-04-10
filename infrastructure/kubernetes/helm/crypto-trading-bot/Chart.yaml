@@ -1,0 +1,13 @@
+apiVersion: v2
+name: crypto-trading-bot
+description: Advanced ML-powered cryptocurrency trading bot platform
+type: application
+version: 1.0.0
+appVersion: "1.0.0"
+keywords:
+  - crypto
+  - trading
+  - machine-learning
+  - microservices
+maintainers:
+  - name: nabil-kh11

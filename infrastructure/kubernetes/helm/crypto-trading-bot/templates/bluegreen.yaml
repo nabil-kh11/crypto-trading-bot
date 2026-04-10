@@ -1,0 +1,48 @@
+# Blue-Green deployment for ML Decision Engine
+# Blue = current production version
+# Green = new version being deployed
+apiVersion: v1
+kind: Service
+metadata:
+  name: ml-decision-engine-production
+  namespace: {{ .Values.namespace }}
+  annotations:
+    deployment-strategy: blue-green
+spec:
+  selector:
+    app: ml-decision-engine
+    version: blue
+  ports:
+  - port: {{ .Values.ports.mlDecisionEngine }}
+    targetPort: {{ .Values.ports.mlDecisionEngine }}
+---
+# Green deployment (new version)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ml-decision-engine-green
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: ml-decision-engine
+    version: green
+spec:
+  replicas: 0
+  selector:
+    matchLabels:
+      app: ml-decision-engine
+      version: green
+  template:
+    metadata:
+      labels:
+        app: ml-decision-engine
+        version: green
+    spec:
+      containers:
+      - name: ml-decision-engine
+        image: {{ .Values.images.mlDecisionEngine }}
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        ports:
+        - containerPort: {{ .Values.ports.mlDecisionEngine }}
+        envFrom:
+        - configMapRef:
+            name: app-config

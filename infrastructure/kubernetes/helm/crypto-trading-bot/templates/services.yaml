@@ -1,0 +1,101 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: market-data-collector
+  namespace: {{ .Values.namespace }}
+spec:
+  selector:
+    app: market-data-collector
+  ports:
+  - port: {{ .Values.ports.marketDataCollector }}
+    targetPort: {{ .Values.ports.marketDataCollector }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ml-decision-engine
+  namespace: {{ .Values.namespace }}
+spec:
+  selector:
+    app: ml-decision-engine
+  ports:
+  - port: {{ .Values.ports.mlDecisionEngine }}
+    targetPort: {{ .Values.ports.mlDecisionEngine }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: sentiment-collector
+  namespace: {{ .Values.namespace }}
+spec:
+  selector:
+    app: sentiment-collector
+  ports:
+  - port: {{ .Values.ports.sentimentCollector }}
+    targetPort: {{ .Values.ports.sentimentCollector }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: order-executor
+  namespace: {{ .Values.namespace }}
+spec:
+  selector:
+    app: order-executor
+  ports:
+  - port: {{ .Values.ports.orderExecutor }}
+    targetPort: {{ .Values.ports.orderExecutor }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: chatbot
+  namespace: {{ .Values.namespace }}
+spec:
+  selector:
+    app: chatbot
+  ports:
+  - port: {{ .Values.ports.chatbot }}
+    targetPort: {{ .Values.ports.chatbot }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: dashboard
+  namespace: {{ .Values.namespace }}
+spec:
+  type: NodePort
+  selector:
+    app: dashboard
+  ports:
+  - port: {{ .Values.ports.dashboard }}
+    targetPort: {{ .Values.ports.dashboard }}
+    nodePort: {{ .Values.dashboardNodePort }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+  namespace: {{ .Values.namespace }}
+spec:
+  selector:
+    app: postgres
+  ports:
+  - port: 5432
+    targetPort: 5432
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: rabbitmq
+  namespace: {{ .Values.namespace }}
+spec:
+  selector:
+    app: rabbitmq
+  ports:
+  - name: amqp
+    port: 5672
+    targetPort: 5672
+  - name: management
+    port: 15672
+    targetPort: 15672

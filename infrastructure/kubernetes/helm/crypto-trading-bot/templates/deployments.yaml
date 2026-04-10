@@ -1,0 +1,218 @@
+# Market Data Collector
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: market-data-collector
+  namespace: {{ .Values.namespace }}
+spec:
+  replicas: {{ .Values.replicaCount.marketDataCollector }}
+  selector:
+    matchLabels:
+      app: market-data-collector
+  template:
+    metadata:
+      labels:
+        app: market-data-collector
+    spec:
+      containers:
+      - name: market-data-collector
+        image: {{ .Values.images.marketDataCollector }}
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        ports:
+        - containerPort: {{ .Values.ports.marketDataCollector }}
+        env:
+        - name: HOST
+          value: "0.0.0.0"
+        - name: PORT
+          value: {{ .Values.ports.marketDataCollector | quote }}
+---
+# ML Decision Engine
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ml-decision-engine
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: ml-decision-engine
+    version: blue
+spec:
+  replicas: {{ .Values.replicaCount.mlDecisionEngine }}
+  selector:
+    matchLabels:
+      app: ml-decision-engine
+      version: blue
+  template:
+    metadata:
+      labels:
+        app: ml-decision-engine
+        version: blue
+    spec:
+      containers:
+      - name: ml-decision-engine
+        image: {{ .Values.images.mlDecisionEngine }}
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        ports:
+        - containerPort: {{ .Values.ports.mlDecisionEngine }}
+        envFrom:
+        - configMapRef:
+            name: app-config
+---
+# Sentiment Collector
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sentiment-collector
+  namespace: {{ .Values.namespace }}
+spec:
+  replicas: {{ .Values.replicaCount.sentimentCollector }}
+  selector:
+    matchLabels:
+      app: sentiment-collector
+  template:
+    metadata:
+      labels:
+        app: sentiment-collector
+    spec:
+      containers:
+      - name: sentiment-collector
+        image: {{ .Values.images.sentimentCollector }}
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        ports:
+        - containerPort: {{ .Values.ports.sentimentCollector }}
+        envFrom:
+        - configMapRef:
+            name: app-config
+---
+# Order Executor
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: order-executor
+  namespace: {{ .Values.namespace }}
+spec:
+  replicas: {{ .Values.replicaCount.orderExecutor }}
+  selector:
+    matchLabels:
+      app: order-executor
+  template:
+    metadata:
+      labels:
+        app: order-executor
+    spec:
+      containers:
+      - name: order-executor
+        image: {{ .Values.images.orderExecutor }}
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        ports:
+        - containerPort: {{ .Values.ports.orderExecutor }}
+        envFrom:
+        - configMapRef:
+            name: app-config
+---
+# Chatbot
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: chatbot
+  namespace: {{ .Values.namespace }}
+spec:
+  replicas: {{ .Values.replicaCount.chatbot }}
+  selector:
+    matchLabels:
+      app: chatbot
+  template:
+    metadata:
+      labels:
+        app: chatbot
+    spec:
+      containers:
+      - name: chatbot
+        image: {{ .Values.images.chatbot }}
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        ports:
+        - containerPort: {{ .Values.ports.chatbot }}
+        envFrom:
+        - configMapRef:
+            name: app-config
+---
+# Dashboard
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dashboard
+  namespace: {{ .Values.namespace }}
+spec:
+  replicas: {{ .Values.replicaCount.dashboard }}
+  selector:
+    matchLabels:
+      app: dashboard
+  template:
+    metadata:
+      labels:
+        app: dashboard
+    spec:
+      containers:
+      - name: dashboard
+        image: {{ .Values.images.dashboard }}
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        ports:
+        - containerPort: {{ .Values.ports.dashboard }}
+---
+# PostgreSQL
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgres
+  namespace: {{ .Values.namespace }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres
+  template:
+    metadata:
+      labels:
+        app: postgres
+    spec:
+      containers:
+      - name: postgres
+        image: {{ .Values.postgres.image }}
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 5432
+        env:
+        - name: POSTGRES_USER
+          value: {{ .Values.postgres.user | quote }}
+        - name: POSTGRES_PASSWORD
+          value: {{ .Values.postgres.password | quote }}
+        - name: POSTGRES_DB
+          value: {{ .Values.postgres.db | quote }}
+        volumeMounts:
+        - name: postgres-storage
+          mountPath: /var/lib/postgresql/data
+      volumes:
+      - name: postgres-storage
+        emptyDir: {}
+---
+# RabbitMQ
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: rabbitmq
+  namespace: {{ .Values.namespace }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: rabbitmq
+  template:
+    metadata:
+      labels:
+        app: rabbitmq
+    spec:
+      containers:
+      - name: rabbitmq
+        image: {{ .Values.rabbitmq.image }}
+        ports:
+        - containerPort: 5672
+        - containerPort: 15672

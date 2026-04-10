@@ -1,0 +1,68 @@
+# Global settings
+namespace: crypto-trading-bot
+
+# Image settings
+image:
+  pullPolicy: IfNotPresent
+
+# Service replicas
+replicaCount:
+  marketDataCollector: 1
+  mlDecisionEngine: 1
+  sentimentCollector: 1
+  orderExecutor: 1
+  chatbot: 1
+  dashboard: 1
+
+# Service images
+images:
+  marketDataCollector: docker.io/library/crypto-trading-bot-market-data-collector:latest
+  mlDecisionEngine: docker.io/library/crypto-trading-bot-ml-decision-engine:latest
+  sentimentCollector: docker.io/library/crypto-trading-bot-sentiment-collector:latest
+  orderExecutor: docker.io/library/crypto-trading-bot-order-executor:latest
+  chatbot: docker.io/library/crypto-trading-bot-chatbot:latest
+  dashboard: docker.io/library/crypto-trading-bot-dashboard:latest
+
+# Environment config
+config:
+  rabbitmqUrl: "amqp://guest:guest@rabbitmq:5672/"
+  databaseUrl: "postgresql://postgres:admin@postgres:5432/cryptobot"
+  marketDataUrl: "http://market-data-collector:8001"
+  mlEngineUrl: "http://ml-decision-engine:8002"
+  useTestnet: "true"
+  minConfidence: "50.0"
+
+# Autoscaling
+autoscaling:
+  enabled: true
+  mlDecisionEngine:
+    minReplicas: 1
+    maxReplicas: 3
+    cpuThreshold: 70
+  orderExecutor:
+    minReplicas: 1
+    maxReplicas: 2
+    cpuThreshold: 70
+
+# Ports
+ports:
+  marketDataCollector: 8001
+  mlDecisionEngine: 8002
+  sentimentCollector: 8003
+  orderExecutor: 8004
+  chatbot: 8005
+  dashboard: 3000
+
+# Dashboard NodePort
+dashboardNodePort: 30000
+
+# PostgreSQL
+postgres:
+  image: postgres:15
+  user: postgres
+  password: admin
+  db: cryptobot
+
+# RabbitMQ
+rabbitmq:
+  image: rabbitmq:3-management
