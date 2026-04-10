@@ -49,7 +49,7 @@ pipeline {
                 echo 'Running SonarQube analysis...'
                 sh '''
                     docker run --rm \
-                        -e SONAR_HOST_URL="http://host.docker.internal:9000" \
+                        -e SONAR_HOST_URL="http://172.17.0.5:9000" \
                         -v "/var/jenkins_home/workspace/crypto-trading-bot:/usr/src" \
                         sonarsource/sonar-scanner-cli \
                         -Dsonar.projectKey=crypto-trading-bot \
