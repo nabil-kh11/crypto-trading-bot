@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useState } from 'react'
+import React, { useEffect, useState } from 'react'
 
 const SERVICES = [
   { name: 'Market Data', url: 'http://localhost:8001/health', port: 8001 },
