@@ -1,5 +1,6 @@
 import uvicorn
 import datetime
+import threading
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -7,6 +8,7 @@ from typing import Dict
 from app.predictor import predict
 from app.publisher import publish_signal
 from app.scheduler import start_scheduler
+from app.grpc_server import serve as grpc_serve
 from app.config import SUPPORTED_SYMBOLS, HOST, PORT, DATABASE_URL
 from prometheus_fastapi_instrumentator import Instrumentator
 
@@ -15,8 +17,8 @@ app = FastAPI(
     description="Generates buy/sell/hold signals using best models",
     version="2.0.0"
 )
-Instrumentator().instrument(app).expose(app)
 
+Instrumentator().instrument(app).expose(app)
 
 app.add_middleware(
     CORSMiddleware,
@@ -47,7 +49,12 @@ def save_signal_to_db(symbol, signal, confidence, model, price, rsi=None):
 def startup():
     global scheduler
     scheduler = start_scheduler()
-    print("ML Decision Engine started with hourly scheduler!")
+    # Start gRPC server in background thread
+    import threading
+    from app.grpc_server import serve as grpc_serve
+    grpc_thread = threading.Thread(target=grpc_serve, daemon=False)
+    grpc_thread.start()
+    print("ML Decision Engine started with REST + gRPC servers!")
 
 @app.on_event("shutdown")
 def shutdown():
@@ -70,12 +77,12 @@ def get_symbols():
 @app.post("/predict")
 def get_prediction(request: PredictRequest, publish: bool = True):
     if request.symbol not in SUPPORTED_SYMBOLS:
-        raise HTTPException(status_code=400,
-                           detail=f"Symbol {request.symbol} not supported")
+        raise HTTPException(
+            status_code=400,
+            detail=f"Symbol {request.symbol} not supported"
+        )
     try:
         result = predict(request.symbol, request.features)
-
-        # Always log signal to DB regardless of publish flag
         save_signal_to_db(
             symbol=request.symbol,
             signal=result['signal'],
@@ -83,9 +90,7 @@ def get_prediction(request: PredictRequest, publish: bool = True):
             model=result['model'],
             price=request.features.get('close_lag_1', 0),
             rsi=request.features.get('rsi', None)
-
         )
-
         if publish:
             publish_signal({
                 "symbol":     request.symbol,
@@ -94,7 +99,6 @@ def get_prediction(request: PredictRequest, publish: bool = True):
                 "model":      result["model"],
                 "timestamp":  datetime.datetime.utcnow().isoformat()
             })
-
         return result
     except ValueError as e:
         raise HTTPException(status_code=422, detail=str(e))

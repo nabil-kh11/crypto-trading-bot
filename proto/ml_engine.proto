@@ -1,0 +1,36 @@
+syntax = "proto3";
+
+package ml_engine;
+
+service MLEngineService {
+    rpc Predict (PredictRequest) returns (PredictResponse);
+    rpc GetHealth (HealthRequest) returns (HealthResponse);
+    rpc GetSymbols (SymbolsRequest) returns (SymbolsResponse);
+}
+
+message PredictRequest {
+    string symbol = 1;
+    map<string, double> features = 2;
+    bool publish = 3;
+}
+
+message PredictResponse {
+    string symbol = 1;
+    string signal = 2;
+    double confidence = 3;
+    string model = 4;
+    map<string, double> probabilities = 5;
+}
+
+message HealthRequest {}
+
+message HealthResponse {
+    string status = 1;
+    string service = 2;
+}
+
+message SymbolsRequest {}
+
+message SymbolsResponse {
+    repeated string symbols = 1;
+}

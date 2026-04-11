@@ -1,21 +1,21 @@
 import uvicorn
+import threading
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.database import init_db, init_signals_table, get_all_trades, get_signals
 from app.executor import execute_trade
 from app.consumer import start_consumer_thread
 from app.binance_executor import get_testnet_balance
+from app.grpc_server import serve as grpc_serve
 from app.config import HOST, PORT
 from prometheus_fastapi_instrumentator import Instrumentator
-
-
 app = FastAPI(
     title="Order Executor",
-    description="Paper trading execution service with Binance Testnet",
+    description="Trading execution service with Binance Testnet",
     version="2.0.0"
 )
-Instrumentator().instrument(app).expose(app)
 
+Instrumentator().instrument(app).expose(app)
 
 app.add_middleware(
     CORSMiddleware,
@@ -30,7 +30,11 @@ def startup():
     init_db()
     init_signals_table()
     start_consumer_thread()
-    print("Order Executor started!")
+    import threading
+    from app.grpc_server import serve as grpc_serve
+    grpc_thread = threading.Thread(target=grpc_serve, daemon=False)
+    grpc_thread.start()
+    print("Order Executor started with REST + gRPC servers!")
 
 @app.get("/health")
 def health():
@@ -43,7 +47,6 @@ def execute(symbol: str):
 
 @app.get("/signal/{symbol}")
 def get_signal_only(symbol: str):
-    """Get ML signal without executing — ML Engine logs the signal"""
     symbol = symbol.replace("-", "/").upper()
     try:
         from app.executor import get_latest_candle, get_ml_signal, get_latest_price
@@ -54,55 +57,6 @@ def get_signal_only(symbol: str):
         price = get_latest_price(symbol)
         if not signal_data:
             return {"signal": "UNKNOWN", "confidence": 0, "price": price}
-        return {
-            "signal":     signal_data['signal'],
-            "confidence": signal_data['confidence'],
-            "model":      signal_data.get('model', 'Unknown'),
-            "price":      price
-        }
-    except Exception as e:
-        return {"signal": "ERROR", "confidence": 0, "price": 0, "error": str(e)}
-    symbol = symbol.replace("-", "/").upper()
-    try:
-        from app.executor import get_latest_candle, get_ml_signal, get_latest_price
-        candle = get_latest_candle(symbol)
-        if not candle:
-            return {"signal": "UNKNOWN", "confidence": 0, "price": 0}
-        signal_data = get_ml_signal(symbol, candle)
-        price = get_latest_price(symbol)
-        if not signal_data:
-            return {"signal": "UNKNOWN", "confidence": 0, "price": price}
-        return {
-            "signal":     signal_data['signal'],
-            "confidence": signal_data['confidence'],
-            "model":      signal_data.get('model', 'Unknown'),
-            "price":      price
-        }
-    except Exception as e:
-        return {"signal": "ERROR", "confidence": 0, "price": 0, "error": str(e)}
-    symbol = symbol.replace("-", "/").upper()
-    try:
-        from app.executor import get_latest_candle, get_ml_signal, get_latest_price
-        from app.database import save_signal
-        candle = get_latest_candle(symbol)
-        if not candle:
-            return {"signal": "UNKNOWN", "confidence": 0, "price": 0}
-        signal_data = get_ml_signal(symbol, candle)
-        price = get_latest_price(symbol)
-        if not signal_data:
-            return {"signal": "UNKNOWN", "confidence": 0, "price": price}
-        
-        # Save signal to database
-        save_signal({
-            "symbol":     symbol,
-            "signal":     signal_data['signal'],
-            "confidence": signal_data['confidence'],
-            "model":      signal_data.get('model', 'Unknown'),
-            "price":      price,
-            "rsi":        candle.get('rsi', 0),
-            "source":     "dashboard"
-        })
-        
         return {
             "signal":     signal_data['signal'],
             "confidence": signal_data['confidence'],

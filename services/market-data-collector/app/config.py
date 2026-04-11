@@ -4,7 +4,7 @@ from pathlib import Path
 
 load_dotenv('/app/.env')
 
-SYMBOLS     = ["BTC/USDT", "ETH/USDT"]
+SUPPORTED_SYMBOLS = ["BTC/USDT", "ETH/USDT"]
 TIMEFRAME   = "1h"
 FETCH_LIMIT = 1000
 HOST        = os.getenv("HOST", "0.0.0.0")

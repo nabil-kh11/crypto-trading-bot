@@ -1,0 +1,70 @@
+syntax = "proto3";
+
+package order_executor;
+
+service OrderExecutorService {
+    rpc Execute (ExecuteRequest) returns (ExecuteResponse);
+    rpc GetBalance (BalanceRequest) returns (BalanceResponse);
+    rpc GetSignal (SignalRequest) returns (SignalResponse);
+    rpc GetTrades (TradesRequest) returns (TradesResponse);
+    rpc GetHealth (HealthRequest) returns (HealthResponse);
+}
+
+message ExecuteRequest {
+    string symbol = 1;
+}
+
+message ExecuteResponse {
+    string status = 1;
+    string signal = 2;
+    double confidence = 3;
+    string model = 4;
+    double price = 5;
+    string message = 6;
+}
+
+message BalanceRequest {}
+
+message BalanceResponse {
+    string source = 1;
+    double usdt = 2;
+    double btc = 3;
+    double eth = 4;
+}
+
+message SignalRequest {
+    string symbol = 1;
+}
+
+message SignalResponse {
+    string signal = 1;
+    double confidence = 2;
+    string model = 3;
+    double price = 4;
+}
+
+message TradesRequest {
+    string symbol = 1;
+    int32 limit = 2;
+}
+
+message Trade {
+    string symbol = 1;
+    string signal = 2;
+    double price = 3;
+    double quantity = 4;
+    double confidence = 5;
+    string status = 6;
+    string executed_at = 7;
+}
+
+message TradesResponse {
+    repeated Trade trades = 1;
+}
+
+message HealthRequest {}
+
+message HealthResponse {
+    string status = 1;
+    string service = 2;
+}

@@ -29,3 +29,6 @@ apscheduler
 starlette
 psycopg2-binary
 prometheus-fastapi-instrumentator 
+grpcio 
+protobuf 
+prometheus-fastapi-instrumentator 

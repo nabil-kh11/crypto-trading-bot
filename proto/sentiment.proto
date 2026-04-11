@@ -1,0 +1,29 @@
+syntax = "proto3";
+
+package sentiment;
+
+service SentimentService {
+    rpc GetSummary (SummaryRequest) returns (SummaryResponse);
+    rpc GetHealth (HealthRequest) returns (HealthResponse);
+}
+
+message SummaryRequest {
+    string asset = 1;
+}
+
+message SummaryResponse {
+    string asset = 1;
+    int32 total_posts = 2;
+    int32 positive = 3;
+    int32 negative = 4;
+    int32 neutral = 5;
+    double avg_score = 6;
+    string label = 7;
+}
+
+message HealthRequest {}
+
+message HealthResponse {
+    string status = 1;
+    string service = 2;
+}

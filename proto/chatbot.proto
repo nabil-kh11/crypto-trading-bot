@@ -1,0 +1,24 @@
+syntax = "proto3";
+
+package chatbot;
+
+service ChatbotService {
+    rpc Ask (AskRequest) returns (AskResponse);
+    rpc GetHealth (HealthRequest) returns (HealthResponse);
+}
+
+message AskRequest {
+    string question = 1;
+}
+
+message AskResponse {
+    string answer = 1;
+    repeated string sources = 2;
+}
+
+message HealthRequest {}
+
+message HealthResponse {
+    string status = 1;
+    string service = 2;
+}

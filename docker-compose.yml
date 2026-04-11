@@ -40,6 +40,7 @@ services:
     container_name: market-data-collector
     ports:
       - "8001:8001"
+      - "50051:50051"
     environment:
       - HOST=0.0.0.0
       - PORT=8001
@@ -54,6 +55,7 @@ services:
     container_name: ml-decision-engine
     ports:
       - "8002:8002"
+      - "50052:50052"
     environment:
       - HOST=0.0.0.0
       - PORT=8002
@@ -75,6 +77,7 @@ services:
     container_name: sentiment-collector
     ports:
       - "8003:8003"
+      - "50053:50053"
     environment:
       - HOST=0.0.0.0
       - PORT=8003
@@ -91,6 +94,7 @@ services:
     container_name: order-executor
     ports:
       - "8004:8004"
+      - "50054:50054"
     environment:
       - HOST=0.0.0.0
       - PORT=8004
@@ -116,6 +120,7 @@ services:
     container_name: chatbot
     ports:
       - "8005:8005"
+      - "50055:50055"
     environment:
       - HOST=0.0.0.0
       - PORT=8005

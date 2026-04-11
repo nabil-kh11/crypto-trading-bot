@@ -1,0 +1,50 @@
+syntax = "proto3";
+
+package market_data;
+
+service MarketDataService {
+    rpc GetPrice (PriceRequest) returns (PriceResponse);
+    rpc GetOHLCV (OHLCVRequest) returns (OHLCVResponse);
+    rpc GetHealth (HealthRequest) returns (HealthResponse);
+}
+
+message PriceRequest {
+    string symbol = 1;
+}
+
+message PriceResponse {
+    string symbol = 1;
+    double price = 2;
+    double high = 3;
+    double low = 4;
+    double volume = 5;
+    string timestamp = 6;
+}
+
+message OHLCVRequest {
+    string symbol = 1;
+    int32 limit = 2;
+}
+
+message Candle {
+    string timestamp = 1;
+    double open = 2;
+    double high = 3;
+    double low = 4;
+    double close = 5;
+    double volume = 6;
+    double rsi = 7;
+    double ma20 = 8;
+    double ma50 = 9;
+}
+
+message OHLCVResponse {
+    repeated Candle candles = 1;
+}
+
+message HealthRequest {}
+
+message HealthResponse {
+    string status = 1;
+    string service = 2;
+}
