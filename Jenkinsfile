@@ -104,12 +104,17 @@ pipeline {
                 '''
             }
         }
-        
+
         stage('Deploy') {
             steps {
-                echo 'Deploying to Kubernetes...'
+                echo 'Deploying to Kubernetes via Helm...'
                 sh '''
-                    kubectl apply -k infrastructure/kubernetes/base/ || echo "kubectl not available - skipping"
+                    helm upgrade crypto-trading-bot \
+                        infrastructure/kubernetes/helm/crypto-trading-bot \
+                        --install \
+                        --namespace crypto-trading-bot \
+                        --create-namespace \
+                        || echo "Helm deployment skipped"
                     echo "Deploy stage complete!"
                 '''
             }
@@ -119,13 +124,13 @@ pipeline {
             steps {
                 echo 'Verifying deployment...'
                 sh '''
+                    helm list || echo "helm list skipped"
                     kubectl get pods -n crypto-trading-bot || echo "kubectl not available - skipping"
                     docker-compose ps
                     echo "Verification complete!"
                 '''
             }
         }
-    }
     
     post {
         success {
