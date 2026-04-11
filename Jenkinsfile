@@ -110,6 +110,7 @@ pipeline {
             steps {
                 echo 'Deploying to Kubernetes via Helm...'
                 sh '''
+                    export KUBECONFIG=/var/jenkins_home/.kube/config
                     helm upgrade crypto-trading-bot \
                         infrastructure/kubernetes/helm/crypto-trading-bot \
                         --install \
