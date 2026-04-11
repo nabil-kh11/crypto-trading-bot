@@ -2,11 +2,11 @@
 import React, { useEffect, useState } from 'react'
 
 const SERVICES = [
-  { name: 'Market Data', url: 'http://localhost:8001/health', port: 8001 },
-  { name: 'ML Engine',   url: 'http://localhost:8002/health', port: 8002 },
-  { name: 'Sentiment',   url: 'http://localhost:8003/health', port: 8003 },
-  { name: 'Order Exec',  url: 'http://localhost:8004/health', port: 8004 },
-  { name: 'Chatbot',     url: 'http://localhost:8005/health', port: 8005 },
+  { name: 'Market Data', url: 'http://localhost:8090/api/market/health', port: 8090 },
+  { name: 'ML Engine',   url: 'http://localhost:8090/api/ml/health', port: 8090 },
+  { name: 'Sentiment',   url: 'http://localhost:8090/api/sentiment/health', port: 8090 },
+  { name: 'Order Exec',  url: 'http://localhost:8090/api/trade/health', port: 8090 },
+  { name: 'Chatbot',     url: 'http://localhost:8090/api/chat/health', port: 8090 },
 ]
 
 export default function ServiceHealth() {

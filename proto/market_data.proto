@@ -36,6 +36,38 @@ message Candle {
     double rsi = 7;
     double ma20 = 8;
     double ma50 = 9;
+    double ma200 = 10;
+    double returns = 11;
+    double vol_20 = 12;
+    double macd = 13;
+    double macd_signal = 14;
+    double macd_diff = 15;
+    double bb_high = 16;
+    double bb_low = 17;
+    double bb_mid = 18;
+    double bb_width = 19;
+    double bb_pct = 20;
+    double atr = 21;
+    double stoch_rsi = 22;
+    double stoch_rsi_k = 23;
+    double stoch_rsi_d = 24;
+    double volume_ratio = 25;
+    double dist_ma200 = 26;
+    double dist_ma50 = 27;
+    double hour = 28;
+    double day_of_week = 29;
+    double close_lag_1 = 30;
+    double returns_lag_1 = 31;
+    double close_lag_2 = 32;
+    double returns_lag_2 = 33;
+    double close_lag_3 = 34;
+    double returns_lag_3 = 35;
+    double close_lag_6 = 36;
+    double returns_lag_6 = 37;
+    double close_lag_12 = 38;
+    double returns_lag_12 = 39;
+    double close_lag_24 = 40;
+    double returns_lag_24 = 41;
 }
 
 message OHLCVResponse {

@@ -18,7 +18,7 @@ export default function ChatBot() {
     setLoading(true)
 
     try {
-      const res = await fetch('http://localhost:8005/ask', {
+      const res = await fetch('http://localhost:8090/api/chat/ask', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ question: userMsg })

@@ -16,7 +16,7 @@ export default function ConfidenceTrend({ symbol, color }: {
   const [avgConf, setAvgConf] = useState<number | null>(null)
 
   useEffect(() => {
-    fetch(`http://localhost:8004/signals?symbol=${symbol}&limit=50`)
+    fetch(`http://localhost:8090/api/trade/signals?symbol=${symbol}&limit=50`)
       .then(r => r.json())
       .then(data => {
         const signals = data.signals || []

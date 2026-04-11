@@ -14,7 +14,7 @@ export default function PriceChart({ symbol, color, label }: { symbol: string, c
   const [chartData, setChartData] = useState<any>(null)
 
 useEffect(() => {
-    fetch(`http://localhost:8001/ohlcv/${symbol}?limit=24`)
+    fetch(`http://localhost:8090/api/market/ohlcv/${symbol}?limit=24`)
       .then(r => r.json())
       .then(data => {
         if (!data || data.length === 0) return

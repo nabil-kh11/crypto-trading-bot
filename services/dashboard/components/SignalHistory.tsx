@@ -14,7 +14,7 @@ export default function SignalHistory({ symbol }: { symbol: string }) {
   const [stats, setStats] = useState<any>(null)
 
   useEffect(() => {
-    fetch(`http://localhost:8004/signals?symbol=${symbol}&limit=200`)
+    fetch(`http://localhost:8090/api/trade/signals?symbol=${symbol}&limit=200`)
       .then(r => r.json())
       .then(data => {
         const signals = data.signals || []

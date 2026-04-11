@@ -12,7 +12,7 @@ export default function PortfolioCard({ title, asset, price }: {
 
   useEffect(() => {
     const fetchBalance = () => {
-      fetch('http://localhost:8004/balance')
+      fetch('http://localhost:8090/api/trade/balance')
         .then(r => r.json())
         .then(data => {
           setBalance(data)
