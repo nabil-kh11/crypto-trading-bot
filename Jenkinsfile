@@ -114,8 +114,6 @@ pipeline {
                     helm upgrade crypto-trading-bot \
                         infrastructure/kubernetes/helm/crypto-trading-bot \
                         --install \
-                        --namespace crypto-trading-bot \
-                        --create-namespace \
                         || echo "Helm deployment skipped"
                     echo "Deploy stage complete!"
                 '''
