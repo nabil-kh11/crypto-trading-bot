@@ -4,15 +4,20 @@ kind: Deployment
 metadata:
   name: market-data-collector
   namespace: {{ .Values.namespace }}
+  labels:
+    app: market-data-collector
+    version: blue
 spec:
   replicas: {{ .Values.replicaCount.marketDataCollector }}
   selector:
     matchLabels:
       app: market-data-collector
+      version: blue
   template:
     metadata:
       labels:
         app: market-data-collector
+        version: blue
     spec:
       containers:
       - name: market-data-collector
@@ -70,15 +75,20 @@ kind: Deployment
 metadata:
   name: sentiment-collector
   namespace: {{ .Values.namespace }}
+  labels:
+    app: sentiment-collector
+    version: blue
 spec:
   replicas: {{ .Values.replicaCount.sentimentCollector }}
   selector:
     matchLabels:
       app: sentiment-collector
+      version: blue
   template:
     metadata:
       labels:
         app: sentiment-collector
+        version: blue
     spec:
       containers:
       - name: sentiment-collector
@@ -96,15 +106,20 @@ kind: Deployment
 metadata:
   name: order-executor
   namespace: {{ .Values.namespace }}
+  labels:
+    app: order-executor
+    version: blue
 spec:
   replicas: {{ .Values.replicaCount.orderExecutor }}
   selector:
     matchLabels:
       app: order-executor
+      version: blue
   template:
     metadata:
       labels:
         app: order-executor
+        version: blue
     spec:
       containers:
       - name: order-executor
@@ -129,15 +144,20 @@ kind: Deployment
 metadata:
   name: chatbot
   namespace: {{ .Values.namespace }}
+  labels:
+    app: chatbot
+    version: blue
 spec:
   replicas: {{ .Values.replicaCount.chatbot }}
   selector:
     matchLabels:
       app: chatbot
+      version: blue
   template:
     metadata:
       labels:
         app: chatbot
+        version: blue
     spec:
       containers:
       - name: chatbot

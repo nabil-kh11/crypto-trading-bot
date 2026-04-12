@@ -46,3 +46,248 @@ spec:
         envFrom:
         - configMapRef:
             name: app-config
+# ── MARKET DATA COLLECTOR ────────────────────────────────────────────────────
+apiVersion: v1
+kind: Service
+metadata:
+  name: market-data-collector-production
+  namespace: {{ .Values.namespace }}
+  annotations:
+    deployment-strategy: blue-green
+spec:
+  selector:
+    app: market-data-collector
+    version: blue
+  ports:
+  - port: {{ .Values.ports.marketDataCollector }}
+    targetPort: {{ .Values.ports.marketDataCollector }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: market-data-collector-green
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: market-data-collector
+    version: green
+spec:
+  replicas: 0
+  selector:
+    matchLabels:
+      app: market-data-collector
+      version: green
+  template:
+    metadata:
+      labels:
+        app: market-data-collector
+        version: green
+    spec:
+      containers:
+      - name: market-data-collector
+        image: {{ .Values.images.marketDataCollector }}
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        ports:
+        - containerPort: {{ .Values.ports.marketDataCollector }}
+        env:
+        - name: HOST
+          value: "0.0.0.0"
+        - name: PORT
+          value: {{ .Values.ports.marketDataCollector | quote }}
+---
+# ── ML DECISION ENGINE ───────────────────────────────────────────────────────
+apiVersion: v1
+kind: Service
+metadata:
+  name: ml-decision-engine-production
+  namespace: {{ .Values.namespace }}
+  annotations:
+    deployment-strategy: blue-green
+spec:
+  selector:
+    app: ml-decision-engine
+    version: blue
+  ports:
+  - port: {{ .Values.ports.mlDecisionEngine }}
+    targetPort: {{ .Values.ports.mlDecisionEngine }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ml-decision-engine-green
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: ml-decision-engine
+    version: green
+spec:
+  replicas: 0
+  selector:
+    matchLabels:
+      app: ml-decision-engine
+      version: green
+  template:
+    metadata:
+      labels:
+        app: ml-decision-engine
+        version: green
+    spec:
+      containers:
+      - name: ml-decision-engine
+        image: {{ .Values.images.mlDecisionEngine }}
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        ports:
+        - containerPort: {{ .Values.ports.mlDecisionEngine }}
+        envFrom:
+        - configMapRef:
+            name: app-config
+        resources:
+          requests:
+            cpu: {{ .Values.resources.mlDecisionEngine.requests.cpu | quote }}
+            memory: {{ .Values.resources.mlDecisionEngine.requests.memory | quote }}
+          limits:
+            cpu: {{ .Values.resources.mlDecisionEngine.limits.cpu | quote }}
+            memory: {{ .Values.resources.mlDecisionEngine.limits.memory | quote }}
+---
+# ── SENTIMENT COLLECTOR ──────────────────────────────────────────────────────
+apiVersion: v1
+kind: Service
+metadata:
+  name: sentiment-collector-production
+  namespace: {{ .Values.namespace }}
+  annotations:
+    deployment-strategy: blue-green
+spec:
+  selector:
+    app: sentiment-collector
+    version: blue
+  ports:
+  - port: {{ .Values.ports.sentimentCollector }}
+    targetPort: {{ .Values.ports.sentimentCollector }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sentiment-collector-green
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: sentiment-collector
+    version: green
+spec:
+  replicas: 0
+  selector:
+    matchLabels:
+      app: sentiment-collector
+      version: green
+  template:
+    metadata:
+      labels:
+        app: sentiment-collector
+        version: green
+    spec:
+      containers:
+      - name: sentiment-collector
+        image: {{ .Values.images.sentimentCollector }}
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        ports:
+        - containerPort: {{ .Values.ports.sentimentCollector }}
+        envFrom:
+        - configMapRef:
+            name: app-config
+---
+# ── ORDER EXECUTOR ───────────────────────────────────────────────────────────
+apiVersion: v1
+kind: Service
+metadata:
+  name: order-executor-production
+  namespace: {{ .Values.namespace }}
+  annotations:
+    deployment-strategy: blue-green
+spec:
+  selector:
+    app: order-executor
+    version: blue
+  ports:
+  - port: {{ .Values.ports.orderExecutor }}
+    targetPort: {{ .Values.ports.orderExecutor }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: order-executor-green
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: order-executor
+    version: green
+spec:
+  replicas: 0
+  selector:
+    matchLabels:
+      app: order-executor
+      version: green
+  template:
+    metadata:
+      labels:
+        app: order-executor
+        version: green
+    spec:
+      containers:
+      - name: order-executor
+        image: {{ .Values.images.orderExecutor }}
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        ports:
+        - containerPort: {{ .Values.ports.orderExecutor }}
+        envFrom:
+        - configMapRef:
+            name: app-config
+        resources:
+          requests:
+            cpu: {{ .Values.resources.orderExecutor.requests.cpu | quote }}
+            memory: {{ .Values.resources.orderExecutor.requests.memory | quote }}
+          limits:
+            cpu: {{ .Values.resources.orderExecutor.limits.cpu | quote }}
+            memory: {{ .Values.resources.orderExecutor.limits.memory | quote }}
+---
+# ── CHATBOT ──────────────────────────────────────────────────────────────────
+apiVersion: v1
+kind: Service
+metadata:
+  name: chatbot-production
+  namespace: {{ .Values.namespace }}
+  annotations:
+    deployment-strategy: blue-green
+spec:
+  selector:
+    app: chatbot
+    version: blue
+  ports:
+  - port: {{ .Values.ports.chatbot }}
+    targetPort: {{ .Values.ports.chatbot }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: chatbot-green
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: chatbot
+    version: green
+spec:
+  replicas: 0
+  selector:
+    matchLabels:
+      app: chatbot
+      version: green
+  template:
+    metadata:
+      labels:
+        app: chatbot
+        version: green
+    spec:
+      containers:
+      - name: chatbot
+        image: {{ .Values.images.chatbot }}
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        ports:
+        - containerPort: {{ .Values.ports.chatbot }}
+        envFrom:
+        - configMapRef:
+            name: app-config
