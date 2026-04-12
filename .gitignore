@@ -224,4 +224,4 @@ notebooks/.ipynb_checkpoints/
 !data/models/best_btc.joblib
 !data/models/best_btc_scaler.joblib
 !data/models/best_eth.joblib
-!data/models/best_eth_scaler.joblib
+!data/models/best_eth_scaler.joblibkubeconfig.yaml 
