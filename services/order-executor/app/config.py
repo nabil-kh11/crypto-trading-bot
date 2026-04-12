@@ -2,7 +2,9 @@ import os
 from dotenv import load_dotenv
 from pathlib import Path
 
-load_dotenv('/app/.env')
+env_path = Path('/app/.env')
+if env_path.exists():
+    load_dotenv(env_path)
 
 # RabbitMQ
 RABBITMQ_URL = os.getenv("RABBITMQ_URL", "amqp://guest:guest@localhost:5672/")

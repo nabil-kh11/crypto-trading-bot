@@ -32,6 +32,12 @@ config:
   useTestnet: "true"
   minConfidence: "50.0"
 
+# Secrets (values injected at deployment time)
+secrets:
+  binanceApiKey: "BINANCE_TESTNET_API_KEY_HERE"
+  binanceSecretKey: "BINANCE_TESTNET_SECRET_KEY_HERE"
+  groqApiKey: "GROQ_API_KEY_HERE"
+
 # Autoscaling
 autoscaling:
   enabled: true
@@ -67,7 +73,7 @@ postgres:
 rabbitmq:
   image: rabbitmq:3-management
 
-  # Add this to values.yaml
+# Resources
 resources:
   mlDecisionEngine:
     requests:
