@@ -80,6 +80,7 @@ pipeline {
             steps {
                 echo 'Running unit tests + service health checks...'
                 sh '''
+                    python3 -m pip install pytest pytest-cov python-dotenv vaderSentiment ta pandas numpy scikit-learn xgboost joblib --break-system-packages --quiet || true
                     python3 -m pytest tests/unit/ -v --tb=short \
                         --cov=services \
                         --cov-report=xml:coverage.xml \
