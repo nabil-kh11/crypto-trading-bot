@@ -80,14 +80,10 @@ pipeline {
             steps {
                 echo 'Running unit tests + service health checks...'
                 sh '''
-                    docker exec jenkins bash -c "
-                        cd /var/jenkins_home/workspace/crypto-trading-bot && \
-                        pip install pytest pytest-cov vaderSentiment ta pandas numpy scikit-learn xgboost joblib --break-system-packages --quiet && \
-                        python -m pytest tests/unit/ -v --tb=short \
-                            --cov=services \
-                            --cov-report=xml:coverage.xml \
-                            || echo Tests completed
-                    "
+                    python3 -m pytest tests/unit/ -v --tb=short \
+                        --cov=services \
+                        --cov-report=xml:coverage.xml \
+                        || echo "Tests completed"
                     docker-compose up -d --no-recreate
                     sleep 30
                     docker-compose ps
