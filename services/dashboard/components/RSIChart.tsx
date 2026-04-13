@@ -16,7 +16,7 @@ export default function RSIChart({ symbol, color, label }: {
   const [currentRSI, setCurrentRSI] = useState<number | null>(null)
 
   useEffect(() => {
-    fetch(`http://localhost:8001/ohlcv/${symbol}?limit=24`)
+    fetch(`http://localhost:8090/api/market/ohlcv/${symbol}?limit=24`)
       .then(r => r.json())
       .then(data => {
         if (!data || data.length === 0) return
