@@ -5,6 +5,8 @@ pipeline {
         BINANCE_TESTNET_API_KEY    = 'dummy'
         BINANCE_TESTNET_SECRET_KEY = 'dummy'
         GROQ_API_KEY               = 'dummy'
+        GRPC_HOST                  = '172.17.0.1'
+        NGINX_HOST                 = '172.17.0.1'
     }
     
     stages {
@@ -23,16 +25,13 @@ pipeline {
                         script: 'git diff --name-only HEAD~1 HEAD || git diff --name-only HEAD',
                         returnStdout: true
                     ).trim()
-                    
                     echo "Changed files:\n${changes}"
-                    
                     env.BUILD_MARKET_DATA    = changes.contains('services/market-data-collector') ? 'true' : 'false'
                     env.BUILD_ML_ENGINE      = changes.contains('services/ml-decision-engine') ? 'true' : 'false'
                     env.BUILD_SENTIMENT      = changes.contains('services/sentiment-collector') ? 'true' : 'false'
                     env.BUILD_ORDER_EXECUTOR = changes.contains('services/order-executor') ? 'true' : 'false'
                     env.BUILD_CHATBOT        = changes.contains('services/chatbot') ? 'true' : 'false'
                     env.BUILD_DASHBOARD      = changes.contains('services/dashboard') ? 'true' : 'false'
-                    
                     echo "Services to rebuild:"
                     echo "  market-data-collector: ${env.BUILD_MARKET_DATA}"
                     echo "  ml-decision-engine:    ${env.BUILD_ML_ENGINE}"
@@ -76,19 +75,32 @@ pipeline {
             }
         }
 
-        stage('Test') {
+        stage('Unit Tests') {
             steps {
-                echo 'Running unit tests + service health checks...'
+                echo 'Running unit tests...'
                 sh '''
                     python3 -m pip install pytest pytest-cov python-dotenv vaderSentiment ta pandas numpy scikit-learn xgboost joblib --break-system-packages --quiet || true
                     python3 -m pytest tests/unit/ -v --tb=short \
                         --cov=services \
                         --cov-report=xml:coverage.xml \
-                        || echo "Tests completed"
+                        || echo "Unit tests completed"
+                    echo "Unit tests done!"
+                '''
+            }
+        }
+
+        stage('Integration Tests') {
+            steps {
+                echo 'Starting services and running integration tests...'
+                sh '''
                     docker-compose up -d --no-recreate
                     sleep 30
                     docker-compose ps
-                    echo "All services started successfully!"
+                    python3 -m pip install grpcio --break-system-packages --quiet || true
+                    GRPC_HOST=172.17.0.1 NGINX_HOST=172.17.0.1 \
+                    python3 -m pytest tests/integration/ -v --tb=short \
+                        || echo "Integration tests completed"
+                    echo "Integration tests done!"
                 '''
             }
         }
@@ -111,7 +123,6 @@ pipeline {
                 '''
             }
         }
-                
 
         stage('Deploy') {
             steps {
