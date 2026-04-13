@@ -3,7 +3,7 @@ from unittest.mock import MagicMock
 
 sys.modules['psycopg2'] = MagicMock()
 
-BASE = r'C:\crypto-trading-bot\services\ml-decision-engine\app'
+BASE = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', 'services', 'ml-decision-engine', 'app')
 
 def load(name, path):
     spec = importlib.util.spec_from_file_location(name, path)
@@ -12,8 +12,8 @@ def load(name, path):
     spec.loader.exec_module(mod)
     return mod
 
-config = load('app.config', f'{BASE}\\config.py')
-predictor = load('app.predictor', f'{BASE}\\predictor.py')
+config = load('app.config', os.path.join(BASE, 'config.py'))
+predictor = load('app.predictor', os.path.join(BASE, 'predictor.py'))
 predict = predictor.predict
 
 SAMPLE_FEATURES = {

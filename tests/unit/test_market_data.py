@@ -5,7 +5,7 @@ from unittest.mock import MagicMock
 
 sys.modules['ccxt'] = MagicMock()
 
-BASE = r'C:\crypto-trading-bot\services\market-data-collector\app'
+BASE = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', 'services', 'market-data-collector', 'app')
 
 def load(name, path):
     spec = importlib.util.spec_from_file_location(name, path)
@@ -15,7 +15,7 @@ def load(name, path):
     return mod
 
 sys.modules['app.config'] = MagicMock(TIMEFRAME='1h', FETCH_LIMIT=100)
-collector = load('app.collector', f'{BASE}\\collector.py')
+collector = load('app.collector', os.path.join(BASE, 'collector.py'))
 _add_indicators = collector._add_indicators
 
 def get_sample_df(rows=300):

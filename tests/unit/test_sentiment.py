@@ -4,7 +4,7 @@ from unittest.mock import MagicMock
 sys.modules['praw'] = MagicMock()
 sys.modules['psycopg2'] = MagicMock()
 
-BASE = r'C:\crypto-trading-bot\services\sentiment-collector\app'
+BASE = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', 'services', 'sentiment-collector', 'app')
 
 def load(name, path):
     spec = importlib.util.spec_from_file_location(name, path)
@@ -14,8 +14,8 @@ def load(name, path):
     return mod
 
 sys.modules['app.config'] = MagicMock(SUBREDDITS=['CryptoCurrency'])
-load('app.config', f'{BASE}\\config.py')
-sentiment = load('app.sentiment', f'{BASE}\\sentiment.py')
+load('app.config', os.path.join(BASE, 'config.py'))
+sentiment = load('app.sentiment', os.path.join(BASE, 'sentiment.py'))
 
 analyze_sentiment = sentiment.analyze_sentiment
 detect_asset      = sentiment.detect_asset

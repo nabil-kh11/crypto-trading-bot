@@ -7,7 +7,7 @@ for mod in ['psycopg2', 'grpc', 'app', 'app.database', 'app.binance_executor',
             'app.config']:
     sys.modules[mod] = MagicMock()
 
-BASE = r'C:\crypto-trading-bot\services\order-executor\app'
+BASE = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', 'services', 'order-executor', 'app')
 
 def load(name, path):
     spec = importlib.util.spec_from_file_location(name, path)
@@ -16,8 +16,8 @@ def load(name, path):
     spec.loader.exec_module(mod)
     return mod
 
-load('app.config', f'{BASE}\\config.py')
-executor = load('app.executor', f'{BASE}\\executor.py')
+load('app.config', os.path.join(BASE, 'config.py'))
+executor = load('app.executor', os.path.join(BASE, 'executor.py'))
 
 calculate_buy_size  = executor.calculate_buy_size
 check_stop_loss     = executor.check_stop_loss
