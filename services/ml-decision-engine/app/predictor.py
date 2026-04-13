@@ -11,25 +11,26 @@ btc_scaler = joblib.load(BTC_SCALER_PATH)  # Scaler for BTC only
 LABEL_MAP = {0: "SELL", 1: "HOLD", 2: "BUY"}
 
 def predict(symbol: str, features: dict) -> dict:
+    if symbol not in ["BTC/USDT", "ETH/USDT"]:
+        raise ValueError(f"Unsupported symbol: {symbol}. Supported: BTC/USDT, ETH/USDT")
+    
     missing = [f for f in FEATURE_COLS if f not in features]
     if missing:
         raise ValueError(f"Missing features: {missing}")
-
+    
     df = pd.DataFrame([features])[FEATURE_COLS].fillna(0)
-
+    
     if "BTC" in symbol:
-        # Neural Network needs scaled features
         X = btc_scaler.transform(df)
         prediction    = btc_model.predict(X)[0]
         probabilities = btc_model.predict_proba(X)[0]
         model_name    = "Neural Network"
     else:
-        # XGBoost uses raw features
         X = df
         prediction    = eth_model.predict(X)[0]
         probabilities = eth_model.predict_proba(X)[0]
         model_name    = "XGBoost"
-
+    
     return {
         "symbol":        symbol,
         "model":         model_name,

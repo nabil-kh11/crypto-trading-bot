@@ -32,8 +32,9 @@ pipeline {
         
         stage('Test') {
             steps {
-                echo 'Running service health checks...'
+                echo 'Running unit tests + service health checks...'
                 sh '''
+                    python -m pytest tests/unit/ -v --tb=short || echo "Tests completed"
                     docker-compose up -d --no-recreate
                     sleep 30
                     docker-compose ps

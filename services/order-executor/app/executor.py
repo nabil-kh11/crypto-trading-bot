@@ -147,7 +147,9 @@ def get_ml_signal(symbol: str, candle: dict) -> dict:
     }
 
 def calculate_buy_size(usdt_balance: float, confidence: float) -> float:
-    if confidence < MIN_CONFIDENCE:
+    if confidence <= MIN_CONFIDENCE:
+        return 0
+    if confidence < 50:
         return 0
     confidence_factor = (confidence - 50) / 50
     base_risk = 0.02
