@@ -54,6 +54,7 @@ pipeline {
                         -Dsonar.projectKey=crypto-trading-bot \
                         -Dsonar.sources=services \
                         -Dsonar.exclusions=**/*_pb2.py,**/*_pb2_grpc.py,**/migrations/**,**/__pycache__/** \
+                        -Dsonar.python.coverage.reportPaths=coverage.xml \
                         -Dsonar.host.url=http://172.17.0.3:9000 \
                         -Dsonar.python.version=3.11 \
                         -Dsonar.token=sqp_8925d4034556b3d0174fb6794cbd2f582d8f5152
@@ -98,14 +99,19 @@ pipeline {
             steps {
                 echo 'Running unit tests + service health checks...'
                 sh '''
-                    python -m pytest tests/unit/ -v --tb=short || echo "Tests completed"
+                    pip install pytest-cov --break-system-packages || true
+                    python -m pytest tests/unit/ -v --tb=short \
+                        --cov=services \
+                        --cov-report=xml:coverage.xml \
+                        --cov-report=term \
+                        || echo "Tests completed"
                     docker-compose up -d --no-recreate
                     sleep 30
                     docker-compose ps
                     echo "All services started successfully!"
                 '''
             }
-        }
+}
 
         stage('Deploy') {
             steps {
