@@ -44,25 +44,6 @@ pipeline {
             }
         }
 
-        stage('Code Quality — SonarQube') {
-            steps {
-                echo 'Running SonarQube analysis...'
-                sh '''
-                    docker exec jenkins bash -c "
-                        cd /var/jenkins_home/workspace/crypto-trading-bot && \
-                        sonar-scanner \
-                        -Dsonar.projectKey=crypto-trading-bot \
-                        -Dsonar.sources=services \
-                        -Dsonar.exclusions=**/*_pb2.py,**/*_pb2_grpc.py,**/migrations/**,**/__pycache__/** \
-                        -Dsonar.python.coverage.reportPaths=coverage.xml \
-                        -Dsonar.host.url=http://172.17.0.3:9000 \
-                        -Dsonar.python.version=3.11 \
-                        -Dsonar.token=sqp_8925d4034556b3d0174fb6794cbd2f582d8f5152
-                    " || echo "SonarQube analysis completed"
-                '''
-            }
-        }
-                
         stage('Build') {
             steps {
                 echo 'Building only changed services...'
@@ -94,24 +75,46 @@ pipeline {
                 }
             }
         }
-        
+
         stage('Test') {
             steps {
                 echo 'Running unit tests + service health checks...'
                 sh '''
-                    pip install pytest-cov --break-system-packages || true
-                    python -m pytest tests/unit/ -v --tb=short \
-                        --cov=services \
-                        --cov-report=xml:coverage.xml \
-                        --cov-report=term \
-                        || echo "Tests completed"
+                    docker exec jenkins bash -c "
+                        cd /var/jenkins_home/workspace/crypto-trading-bot && \
+                        pip install pytest pytest-cov vaderSentiment ta pandas numpy scikit-learn xgboost joblib --break-system-packages --quiet && \
+                        python -m pytest tests/unit/ -v --tb=short \
+                            --cov=services \
+                            --cov-report=xml:coverage.xml \
+                            || echo Tests completed
+                    "
                     docker-compose up -d --no-recreate
                     sleep 30
                     docker-compose ps
                     echo "All services started successfully!"
                 '''
             }
-}
+        }
+
+        stage('Code Quality — SonarQube') {
+            steps {
+                echo 'Running SonarQube analysis...'
+                sh '''
+                    docker exec jenkins bash -c "
+                        cd /var/jenkins_home/workspace/crypto-trading-bot && \
+                        sonar-scanner \
+                        -Dsonar.projectKey=crypto-trading-bot \
+                        -Dsonar.sources=services \
+                        -Dsonar.exclusions=**/*_pb2.py,**/*_pb2_grpc.py,**/migrations/**,**/__pycache__/** \
+                        -Dsonar.python.coverage.reportPaths=coverage.xml \
+                        -Dsonar.host.url=http://172.17.0.3:9000 \
+                        -Dsonar.python.version=3.11 \
+                        -Dsonar.token=sqp_8925d4034556b3d0174fb6794cbd2f582d8f5152
+                    " || echo "SonarQube analysis completed"
+                '''
+            }
+        }
+                
 
         stage('Deploy') {
             steps {
