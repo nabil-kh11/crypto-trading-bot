@@ -7,7 +7,7 @@ if env_path.exists():
     load_dotenv(env_path)
 
 # Dynamic model path — works both locally and in Docker
-BASE_DIR = Path(__file__).resolve().parent.parent.parent.parent
+BASE_DIR = Path(__file__).resolve().parent.parent
 MODEL_DIR = os.getenv("MODEL_DIR", str(BASE_DIR / "data" / "models"))
 
 DATABASE_URL    = os.getenv("DATABASE_URL", "postgresql://postgres:admin@localhost:5432/cryptobot")

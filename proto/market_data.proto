@@ -1,11 +1,16 @@
 syntax = "proto3";
-
 package market_data;
 
 service MarketDataService {
     rpc GetPrice (PriceRequest) returns (PriceResponse);
     rpc GetOHLCV (OHLCVRequest) returns (OHLCVResponse);
     rpc GetHealth (HealthRequest) returns (HealthResponse);
+    rpc StreamCandles (StreamRequest) returns (stream Candle);
+}
+
+message StreamRequest {
+    string symbol = 1;
+    int32 interval_seconds = 2;
 }
 
 message PriceRequest {
