@@ -55,3 +55,8 @@ class TestSentimentAnalysis:
         post = {'title': 'Bitcoin is rising', 'body': 'Great news!'}
         result = process_post(post)
         assert 'sentiment_label' in result and result['asset'] == 'BTC'
+    def test_analyze_sentiment_returns_model(self):
+        """Sentiment returns model name"""
+        result = analyze_sentiment("Bitcoin is great!")
+        assert 'model' in result
+        assert result['model'] in ['FinBERT', 'VADER']
