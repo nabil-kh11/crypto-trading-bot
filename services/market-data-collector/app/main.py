@@ -1,6 +1,8 @@
 import uvicorn
 import threading
-from fastapi import FastAPI, HTTPException
+import asyncio
+import json
+from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from app.collector import fetch_ohlcv, get_latest_price
 from app.grpc_server import serve as grpc_serve
@@ -23,11 +25,9 @@ app.add_middleware(
 
 @app.on_event("startup")
 def startup():
-    import threading
-    from app.grpc_server import serve as grpc_serve
     grpc_thread = threading.Thread(target=grpc_serve, daemon=False)
     grpc_thread.start()
-    print("Market Data Collector started with REST + gRPC servers!")
+    print("Market Data Collector started with REST + gRPC + WebSocket servers!")
 
 @app.get("/health")
 def health():
@@ -53,6 +53,23 @@ def get_ohlcv(symbol: str, limit: int = 100):
         return df.to_dict(orient="records")
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+@app.websocket("/ws/price/{symbol}")
+async def websocket_price(websocket: WebSocket, symbol: str):
+    """WebSocket endpoint for real-time price updates"""
+    await websocket.accept()
+    symbol_ccxt = symbol.replace("-", "/")
+    print(f"[WebSocket] Client connected for {symbol}")
+    try:
+        while True:
+            try:
+                data = get_latest_price(symbol_ccxt)
+                await websocket.send_json(data)
+            except Exception as e:
+                print(f"[WebSocket] Error fetching price: {e}")
+            await asyncio.sleep(2)
+    except WebSocketDisconnect:
+        print(f"[WebSocket] Client disconnected for {symbol}")
 
 if __name__ == "__main__":
     uvicorn.run("app.main:app", host=HOST, port=PORT, reload=True)

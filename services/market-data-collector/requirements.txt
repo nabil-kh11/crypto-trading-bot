@@ -43,3 +43,4 @@ prometheus-fastapi-instrumentator
 grpcio 
 protobuf 
 prometheus-fastapi-instrumentator 
+websockets 

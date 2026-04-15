@@ -14,6 +14,7 @@ import SignalHistory from '@/components/SignalHistory'
 import ConfidenceTrend from '@/components/ConfidenceTrend'
 import WinRate from '@/components/WinRate'
 import SentimentGauge from '@/components/SentimentGauge'
+
 export default function Dashboard() {
   const [btcPrice, setBtcPrice] = useState<any>(null)
   const [ethPrice, setEthPrice] = useState<any>(null)
@@ -21,31 +22,65 @@ export default function Dashboard() {
   const [ethSentiment, setEthSentiment] = useState<any>(null)
   const [trades, setTrades] = useState<any[]>([])
   const [lastUpdate, setLastUpdate] = useState<string>('')
+  const [wsConnected, setWsConnected] = useState<boolean>(false)
 
- const fetchData = async () => {
-  try {
-    const safeFetch = (url: string) => 
-      fetch(url).then(r => r.json()).catch(() => null)
+  // WebSocket for real-time prices
+  useEffect(() => {
+    const connectBtcWs = () => {
+      const btcWs = new WebSocket('ws://localhost:8001/ws/price/BTC-USDT')
+      btcWs.onopen = () => setWsConnected(true)
+      btcWs.onmessage = (event) => {
+        const data = JSON.parse(event.data)
+        setBtcPrice(data)
+        setLastUpdate(new Date().toLocaleTimeString())
+      }
+      btcWs.onclose = () => {
+        setWsConnected(false)
+        setTimeout(connectBtcWs, 3000)
+      }
+      btcWs.onerror = () => btcWs.close()
+      return btcWs
+    }
 
-const [btcP, ethP, btcSent, ethSent, tradesData] = await Promise.all([
-  safeFetch('http://localhost:8001/price/BTC-USDT'),
-  safeFetch('http://localhost:8001/price/ETH-USDT'),
-  safeFetch('http://localhost:8003/summary/BTC'),
-  safeFetch('http://localhost:8003/summary/ETH'),
-  safeFetch('http://localhost:8004/trades?limit=50'),
-])
+    const connectEthWs = () => {
+      const ethWs = new WebSocket('ws://localhost:8001/ws/price/ETH-USDT')
+      ethWs.onmessage = (event) => {
+        const data = JSON.parse(event.data)
+        setEthPrice(data)
+      }
+      ethWs.onclose = () => setTimeout(connectEthWs, 3000)
+      ethWs.onerror = () => ethWs.close()
+      return ethWs
+    }
 
-    if (btcP) setBtcPrice(btcP)
-    if (ethP) setEthPrice(ethP)
+    const btcWs = connectBtcWs()
+    const ethWs = connectEthWs()
 
-    if (btcSent) setBtcSentiment(btcSent)
-    if (ethSent) setEthSentiment(ethSent)
-    if (tradesData) setTrades(tradesData.trades || [])
-    setLastUpdate(new Date().toLocaleTimeString())
-  } catch (e) {
-    console.error('Fetch error:', e)
+    return () => {
+      btcWs.close()
+      ethWs.close()
+    }
+  }, [])
+
+  // REST polling for other data (sentiment, trades)
+  const fetchData = async () => {
+    try {
+      const safeFetch = (url: string) =>
+        fetch(url).then(r => r.json()).catch(() => null)
+
+      const [btcSent, ethSent, tradesData] = await Promise.all([
+        safeFetch('http://localhost:8003/summary/BTC'),
+        safeFetch('http://localhost:8003/summary/ETH'),
+        safeFetch('http://localhost:8004/trades?limit=50'),
+      ])
+
+      if (btcSent) setBtcSentiment(btcSent)
+      if (ethSent) setEthSentiment(ethSent)
+      if (tradesData) setTrades(tradesData.trades || [])
+    } catch (e) {
+      console.error('Fetch error:', e)
+    }
   }
-}
 
   useEffect(() => {
     fetchData()
@@ -66,19 +101,24 @@ const [btcP, ethP, btcSent, ethSent, tradesData] = await Promise.all([
           <div className="text-right">
             <p className="text-gray-400 text-xs">Last updated: {lastUpdate}</p>
             <div className="flex gap-2 mt-1">
-              <span className="w-2 h-2 rounded-full bg-green-500 inline-block mt-1"></span>
-              <span className="text-green-400 text-xs">Live</span>
+              <span className={`w-2 h-2 rounded-full inline-block mt-1 ${wsConnected ? 'bg-green-500 animate-pulse' : 'bg-yellow-500'}`}></span>
+              <span className={`text-xs ${wsConnected ? 'text-green-400' : 'text-yellow-400'}`}>
+                {wsConnected ? 'Live WebSocket' : 'Connecting...'}
+              </span>
             </div>
           </div>
         </div>
+
         <ServiceHealth />
-        {/* Win Rate Statistics */}
-<WinRate trades={trades} />
-        
+        <WinRate trades={trades} />
+
         {/* Price Cards */}
         <div className="grid grid-cols-2 gap-4 mb-6">
           <div className="bg-gray-900 rounded-xl p-4 border border-gray-800">
-            <p className="text-gray-400 text-sm">BTC / USDT</p>
+            <div className="flex justify-between items-start">
+              <p className="text-gray-400 text-sm">BTC / USDT</p>
+              {wsConnected && <span className="text-xs text-green-400 animate-pulse">● LIVE</span>}
+            </div>
             <p className="text-3xl font-bold text-orange-400">
               ${btcPrice?.price?.toLocaleString() || '---'}
             </p>
@@ -87,7 +127,10 @@ const [btcP, ethP, btcSent, ethSent, tradesData] = await Promise.all([
             </p>
           </div>
           <div className="bg-gray-900 rounded-xl p-4 border border-gray-800">
-            <p className="text-gray-400 text-sm">ETH / USDT</p>
+            <div className="flex justify-between items-start">
+              <p className="text-gray-400 text-sm">ETH / USDT</p>
+              {wsConnected && <span className="text-xs text-green-400 animate-pulse">● LIVE</span>}
+            </div>
             <p className="text-3xl font-bold text-blue-400">
               ${ethPrice?.price?.toLocaleString() || '---'}
             </p>
@@ -96,46 +139,45 @@ const [btcP, ethP, btcSent, ethSent, tradesData] = await Promise.all([
             </p>
           </div>
         </div>
+
         {/* RSI Charts */}
-<div className="grid grid-cols-2 gap-4 mb-6">
-  <RSIChart symbol="BTC-USDT" color="#f97316" label="BTC" />
-  <RSIChart symbol="ETH-USDT" color="#60a5fa" label="ETH" />
-</div>
+        <div className="grid grid-cols-2 gap-4 mb-6">
+          <RSIChart symbol="BTC-USDT" color="#f97316" label="BTC" />
+          <RSIChart symbol="ETH-USDT" color="#60a5fa" label="ETH" />
+        </div>
 
-{/* Signal History + Confidence */}
-<div className="grid grid-cols-2 gap-4 mb-6">
-  <SignalHistory symbol="BTC/USDT" />
-  <SignalHistory symbol="ETH/USDT" />
-</div>
+        {/* Signal History + Confidence */}
+        <div className="grid grid-cols-2 gap-4 mb-6">
+          <SignalHistory symbol="BTC/USDT" />
+          <SignalHistory symbol="ETH/USDT" />
+        </div>
 
-<div className="grid grid-cols-2 gap-4 mb-6">
-  <ConfidenceTrend symbol="BTC/USDT" color="#f97316" />
-  <ConfidenceTrend symbol="ETH/USDT" color="#60a5fa" />
-</div>
+        <div className="grid grid-cols-2 gap-4 mb-6">
+          <ConfidenceTrend symbol="BTC/USDT" color="#f97316" />
+          <ConfidenceTrend symbol="ETH/USDT" color="#60a5fa" />
+        </div>
+
         {/* Charts */}
         <div className="grid grid-cols-2 gap-4 mb-6">
           <PriceChart symbol="BTC-USDT" color="#f97316" label="BTC" />
           <PriceChart symbol="ETH-USDT" color="#60a5fa" label="ETH" />
         </div>
 
-       {/* Signals + Sentiment Gauge */}
-<div className="grid grid-cols-3 gap-4 mb-6">
-  <SignalCard title="BTC Signal" signal={null} />
-  <SignalCard title="ETH Signal" signal={null} />
-  <SentimentGauge btc={btcSentiment} eth={ethSentiment} />
-</div>
+        {/* Signals + Sentiment */}
+        <div className="grid grid-cols-3 gap-4 mb-6">
+          <SignalCard title="BTC Signal" signal={null} />
+          <SignalCard title="ETH Signal" signal={null} />
+          <SentimentGauge btc={btcSentiment} eth={ethSentiment} />
+        </div>
 
         {/* Portfolio */}
-<div className="grid grid-cols-2 gap-4 mb-6">
-  <PortfolioCard title="BTC Portfolio" asset="BTC" price={btcPrice?.price} />
-  <PortfolioCard title="ETH Portfolio" asset="ETH" price={ethPrice?.price} />
-</div>
+        <div className="grid grid-cols-2 gap-4 mb-6">
+          <PortfolioCard title="BTC Portfolio" asset="BTC" price={btcPrice?.price} />
+          <PortfolioCard title="ETH Portfolio" asset="ETH" price={ethPrice?.price} />
+        </div>
 
-        {/* Trades Table */}
         <TradesTable trades={trades} />
         <PortfolioChart trades={trades} />
-
-        {/* Chatbot */}
         <ChatBot />
 
       </div>
