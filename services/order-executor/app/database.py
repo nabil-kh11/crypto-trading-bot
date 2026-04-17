@@ -80,23 +80,35 @@ def update_portfolio(symbol: str, capital: float, position: float, avg_price: fl
     cursor.close()
     conn.close()
 
-def get_all_trades(symbol: str = None, limit: int = 50):
+def get_all_trades(symbol: str = None, limit: int = 50, offset: int = 0):
     conn = get_connection()
     cursor = conn.cursor(cursor_factory=RealDictCursor)
     if symbol:
         cursor.execute("""
             SELECT * FROM trades WHERE symbol = %s
-            ORDER BY executed_at DESC LIMIT %s
-        """, (symbol, limit))
+            ORDER BY executed_at DESC LIMIT %s OFFSET %s
+        """, (symbol, limit, offset))
     else:
         cursor.execute("""
             SELECT * FROM trades
-            ORDER BY executed_at DESC LIMIT %s
-        """, (limit,))
+            ORDER BY executed_at DESC LIMIT %s OFFSET %s
+        """, (limit, offset))
     trades = cursor.fetchall()
     cursor.close()
     conn.close()
     return [dict(t) for t in trades]
+def get_trades_count(symbol: str = None) -> int:
+    conn = get_connection()
+    cursor = conn.cursor()
+    if symbol:
+        cursor.execute("SELECT COUNT(*) FROM trades WHERE symbol = %s", (symbol,))
+    else:
+        cursor.execute("SELECT COUNT(*) FROM trades")
+    count = cursor.fetchone()[0]
+    cursor.close()
+    conn.close()
+    return count
+
 
 def get_last_buy_time(symbol: str):
     conn = get_connection()

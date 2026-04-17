@@ -63,13 +63,17 @@ async def websocket_price(websocket: WebSocket, symbol: str):
     try:
         while True:
             try:
-                data = get_latest_price(symbol_ccxt)
+                # Run blocking call in thread pool to not block event loop
+                loop = asyncio.get_event_loop()
+                data = await loop.run_in_executor(
+                    None, get_latest_price, symbol_ccxt
+                )
                 await websocket.send_json(data)
+            except WebSocketDisconnect:
+                break
             except Exception as e:
-                print(f"[WebSocket] Error fetching price: {e}")
+                print(f"[WebSocket] Error: {e}")
+                break
             await asyncio.sleep(2)
-    except WebSocketDisconnect:
+    finally:
         print(f"[WebSocket] Client disconnected for {symbol}")
-
-if __name__ == "__main__":
-    uvicorn.run("app.main:app", host=HOST, port=PORT, reload=True)

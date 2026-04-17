@@ -2,15 +2,16 @@
 'use client'
 import { useEffect, useState } from 'react'
 
-export default function SignalCard({ title }: { title: string, signal: any }) {
+export default function SignalCard({ title }: { title: string }) {
   const [data, setData] = useState<any>(null)
   const symbol = title.includes('BTC') ? 'BTC-USDT' : 'ETH-USDT'
 
   useEffect(() => {
     const fetchSignal = () => {
-      fetch(`http://localhost:8090/api/trade/signal/${symbol}`, { method: 'GET' })
+      fetch(`http://localhost:8090/api/trade/signal/${symbol}`)
         .then(r => r.json())
         .then(setData)
+        .catch(() => null)
     }
     fetchSignal()
     const interval = setInterval(fetchSignal, 60000)

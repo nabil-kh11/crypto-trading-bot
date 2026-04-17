@@ -16,12 +16,11 @@ import WinRate from '@/components/WinRate'
 import SentimentGauge from '@/components/SentimentGauge'
 
 export default function Dashboard() {
-  const [btcPrice, setBtcPrice] = useState<any>(null)
-  const [ethPrice, setEthPrice] = useState<any>(null)
+  const [btcPrice, setBtcPrice]       = useState<any>(null)
+  const [ethPrice, setEthPrice]       = useState<any>(null)
   const [btcSentiment, setBtcSentiment] = useState<any>(null)
   const [ethSentiment, setEthSentiment] = useState<any>(null)
-  const [trades, setTrades] = useState<any[]>([])
-  const [lastUpdate, setLastUpdate] = useState<string>('')
+  const [lastUpdate, setLastUpdate]   = useState<string>('')
   const [wsConnected, setWsConnected] = useState<boolean>(false)
 
   // WebSocket for real-time prices
@@ -62,29 +61,24 @@ export default function Dashboard() {
     }
   }, [])
 
-  // REST polling for other data (sentiment, trades)
-  const fetchData = async () => {
-    try {
-      const safeFetch = (url: string) =>
-        fetch(url).then(r => r.json()).catch(() => null)
-
-      const [btcSent, ethSent, tradesData] = await Promise.all([
-        safeFetch('http://localhost:8003/summary/BTC'),
-        safeFetch('http://localhost:8003/summary/ETH'),
-        safeFetch('http://localhost:8004/trades?limit=50'),
-      ])
-
-      if (btcSent) setBtcSentiment(btcSent)
-      if (ethSent) setEthSentiment(ethSent)
-      if (tradesData) setTrades(tradesData.trades || [])
-    } catch (e) {
-      console.error('Fetch error:', e)
-    }
-  }
-
+  // Sentiment only — refresh every 5 minutes
   useEffect(() => {
-    fetchData()
-    const interval = setInterval(fetchData, 30000)
+    const fetchSentiment = async () => {
+      try {
+        const safeFetch = (url: string) =>
+          fetch(url).then(r => r.json()).catch(() => null)
+        const [btcSent, ethSent] = await Promise.all([
+          safeFetch('http://localhost:8003/summary/BTC'),
+          safeFetch('http://localhost:8003/summary/ETH'),
+        ])
+        if (btcSent) setBtcSentiment(btcSent)
+        if (ethSent) setEthSentiment(ethSent)
+      } catch (e) {
+        console.error('Sentiment fetch error:', e)
+      }
+    }
+    fetchSentiment()
+    const interval = setInterval(fetchSentiment, 300000) // 5 minutes
     return () => clearInterval(interval)
   }, [])
 
@@ -110,7 +104,7 @@ export default function Dashboard() {
         </div>
 
         <ServiceHealth />
-        <WinRate trades={trades} />
+        <WinRate />
 
         {/* Price Cards */}
         <div className="grid grid-cols-2 gap-4 mb-6">
@@ -165,8 +159,8 @@ export default function Dashboard() {
 
         {/* Signals + Sentiment */}
         <div className="grid grid-cols-3 gap-4 mb-6">
-          <SignalCard title="BTC Signal" signal={null} />
-          <SignalCard title="ETH Signal" signal={null} />
+          <SignalCard title="BTC Signal" />
+          <SignalCard title="ETH Signal" />
           <SentimentGauge btc={btcSentiment} eth={ethSentiment} />
         </div>
 
@@ -176,8 +170,8 @@ export default function Dashboard() {
           <PortfolioCard title="ETH Portfolio" asset="ETH" price={ethPrice?.price} />
         </div>
 
-        <TradesTable trades={trades} />
-        <PortfolioChart trades={trades} />
+        <TradesTable />
+        <PortfolioChart />
         <ChatBot />
 
       </div>

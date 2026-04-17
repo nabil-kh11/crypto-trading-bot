@@ -1,5 +1,4 @@
 version: "3.8"
-
 services:
   rabbitmq:
     image: rabbitmq:3-management
@@ -138,6 +137,26 @@ services:
     container_name: dashboard
     ports:
       - "33000:3000"
+    depends_on:
+      - market-data-collector
+      - ml-decision-engine
+      - sentiment-collector
+      - order-executor
+      - chatbot
+    restart: unless-stopped
+
+  nginx-gateway:
+    image: nginx:alpine
+    container_name: nginx-gateway
+    ports:
+      - "8090:80"
+      - "9051:9051"
+      - "9052:9052"
+      - "9053:9053"
+      - "9054:9054"
+      - "9055:9055"
+    volumes:
+      - ./infrastructure/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
     depends_on:
       - market-data-collector
       - ml-decision-engine

@@ -665,13 +665,20 @@ def check_volume_filter(candle: dict, signal: str) -> bool:
         return False
     return True
 
-def check_min_hold_time(symbol: str) -> bool:
+def check_min_hold_time(symbol: str, pnl_pct: float = 0) -> bool:
+    """
+    Only enforce hold time when position is at a loss
+    If profitable → allow sell immediately (take profit)
+    """
+    if pnl_pct > 0:
+        return True  # profitable → allow sell anytime!
+    
     last_buy = get_last_buy_time(symbol)
     if not last_buy:
         return True
     hours_held = (datetime.utcnow() - last_buy).total_seconds() / 3600
     if hours_held < MIN_HOLD_HOURS:
-        print(f"[HoldTime] SELL blocked — only held {hours_held:.1f}h")
+        print(f"[HoldTime] SELL blocked — loss position held only {hours_held:.1f}h")
         return False
     return True
 
@@ -767,7 +774,7 @@ def execute_trade(symbol: str) -> dict:
                 "status": "executed", "signal": "BUY",
                 "model": model, "invested": invest_amount,
                 "quantity": testnet_result['quantity'],
-                "price": testnet_result['price'],
+                "price": testnet_result['price'], 
                 "usdt_after": get_testnet_balance('USDT'),
                 f"{asset.lower()}_after": get_testnet_balance(asset)
             }
@@ -775,9 +782,11 @@ def execute_trade(symbol: str) -> dict:
             return {"status": "error", "message": testnet_result['error']}
 
     elif signal == "SELL" and asset_balance > 0.001:
-        if not check_min_hold_time(symbol):
+        pnl_pct = ((price - avg_buy_price) / avg_buy_price * 100) if avg_buy_price > 0 else 0
+        
+        if not check_min_hold_time(symbol, pnl_pct):
             return {"status": "filtered",
-                    "reason": "Min hold time not reached",
+                    "reason": "Min hold time not reached (position at loss)",
                     "signal": signal, "price": price}
         if not check_trend_filter(candle, 'SELL'):
             return {"status": "filtered", "reason": "Uptrend — SELL blocked",

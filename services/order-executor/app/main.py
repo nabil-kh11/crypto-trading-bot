@@ -2,7 +2,7 @@ import uvicorn
 import threading
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.database import init_db, init_signals_table, get_all_trades, get_signals
+from app.database import init_db, init_signals_table, get_all_trades, get_signals, get_trades_count
 from app.executor import execute_trade
 from app.consumer import start_consumer_thread
 from app.binance_executor import get_testnet_balance
@@ -110,16 +110,33 @@ def get_signals_history(symbol: str = None, limit: int = 100):
 
 @app.get("/balance")
 def get_balance():
+    try:
+        import grpc
+        from app import market_data_pb2, market_data_pb2_grpc
+        channel = grpc.insecure_channel('market-data-collector:50051')
+        stub = market_data_pb2_grpc.MarketDataServiceStub(channel)
+        
+        btc_price = stub.GetPrice(market_data_pb2.PriceRequest(symbol='BTC-USDT'), timeout=5).price
+        eth_price = stub.GetPrice(market_data_pb2.PriceRequest(symbol='ETH-USDT'), timeout=5).price
+    except:
+        btc_price = 0
+        eth_price = 0
+
     return {
         "source": "Binance Testnet",
         "USDT": get_testnet_balance('USDT'),
         "BTC":  get_testnet_balance('BTC'),
         "ETH":  get_testnet_balance('ETH'),
+        "BTC_PRICE": btc_price,
+        "ETH_PRICE": eth_price,
     }
 
 @app.get("/trades")
-def get_trades(symbol: str = None, limit: int = 50):
-    return {"trades": get_all_trades(symbol=symbol, limit=limit)}
+def get_trades(symbol: str = None, limit: int = 10, offset: int = 0):
+    return {
+        "trades": get_all_trades(symbol=symbol, limit=limit, offset=offset),
+        "total": get_trades_count(symbol=symbol)
+    }
 
 @app.get("/symbols")
 def symbols():
