@@ -1,5 +1,6 @@
 import uvicorn
 import threading
+import time
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.database import init_db, init_signals_table, get_all_trades, get_signals, get_trades_count
@@ -9,6 +10,7 @@ from app.binance_executor import get_testnet_balance
 from app.grpc_server import serve as grpc_serve
 from app.config import HOST, PORT
 from prometheus_fastapi_instrumentator import Instrumentator
+
 app = FastAPI(
     title="Order Executor",
     description="Trading execution service with Binance Testnet",
@@ -25,15 +27,40 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Price cache — updated every 60 seconds in background
+_price_cache = {"BTC_PRICE": 0.0, "ETH_PRICE": 0.0}
+
+def update_price_cache():
+    """Background thread to update BTC/ETH prices every 60 seconds"""
+    while True:
+        try:
+            import grpc
+            from app import market_data_pb2, market_data_pb2_grpc
+            channel = grpc.insecure_channel('market-data-collector:50051')
+            stub = market_data_pb2_grpc.MarketDataServiceStub(channel)
+            btc = stub.GetPrice(market_data_pb2.PriceRequest(symbol='BTC-USDT'), timeout=10)
+            eth = stub.GetPrice(market_data_pb2.PriceRequest(symbol='ETH-USDT'), timeout=10)
+            _price_cache["BTC_PRICE"] = float(btc.price)
+            _price_cache["ETH_PRICE"] = float(eth.price)
+            print(f"[PriceCache] BTC={btc.price:.2f} ETH={eth.price:.2f}")
+        except Exception as e:
+            print(f"[PriceCache] Error: {e}")
+        time.sleep(60)
+
 @app.on_event("startup")
 def startup():
     init_db()
     init_signals_table()
     start_consumer_thread()
-    import threading
-    from app.grpc_server import serve as grpc_serve
+
+    # Start gRPC server
     grpc_thread = threading.Thread(target=grpc_serve, daemon=False)
     grpc_thread.start()
+
+    # Start price cache updater
+    price_thread = threading.Thread(target=update_price_cache, daemon=True)
+    price_thread.start()
+
     print("Order Executor started with REST + gRPC servers!")
 
 @app.get("/health")
@@ -52,14 +79,13 @@ def get_signal_only(symbol: str):
         import grpc
         from app import ml_engine_pb2, ml_engine_pb2_grpc
         from app.executor import get_latest_candle, get_latest_price
-        
+
         candle = get_latest_candle(symbol)
         price = get_latest_price(symbol)
-        
+
         if not candle:
             return {"signal": "UNKNOWN", "confidence": 0, "price": price}
 
-        # Build features from candle
         FEATURE_COLS = [
             'ma20', 'ma50', 'ma200', 'rsi', 'returns', 'vol_20',
             'macd', 'macd_signal', 'macd_diff',
@@ -74,27 +100,22 @@ def get_signal_only(symbol: str):
             'close_lag_12', 'returns_lag_12',
             'close_lag_24', 'returns_lag_24'
         ]
-        
+
         features = {}
         for col in FEATURE_COLS:
             if col in candle:
                 features[col] = float(candle[col])
 
-        print(f"[Signal Debug] Features count: {len(features)}, candle keys: {list(candle.keys())}")
-
         if len(features) < 10:
             return {"signal": "UNKNOWN", "confidence": 0, "price": price}
 
-        # Call ML engine via gRPC
         channel = grpc.insecure_channel('ml-decision-engine:50052')
         stub = ml_engine_pb2_grpc.MLEngineServiceStub(channel)
         request = ml_engine_pb2.PredictRequest(
-            symbol=symbol,
-            features=features,
-            publish=False
+            symbol=symbol, features=features, publish=False
         )
         response = stub.Predict(request, timeout=10)
-        
+
         return {
             "signal": response.signal,
             "confidence": response.confidence,
@@ -104,31 +125,21 @@ def get_signal_only(symbol: str):
     except Exception as e:
         print(f"[Signal] Error: {e}")
         return {"signal": "ERROR", "confidence": 0, "price": 0, "error": str(e)}
+
 @app.get("/signals")
 def get_signals_history(symbol: str = None, limit: int = 100):
     return {"signals": get_signals(symbol=symbol, limit=limit)}
 
 @app.get("/balance")
 def get_balance():
-    try:
-        import grpc
-        from app import market_data_pb2, market_data_pb2_grpc
-        channel = grpc.insecure_channel('market-data-collector:50051')
-        stub = market_data_pb2_grpc.MarketDataServiceStub(channel)
-        
-        btc_price = stub.GetPrice(market_data_pb2.PriceRequest(symbol='BTC-USDT'), timeout=5).price
-        eth_price = stub.GetPrice(market_data_pb2.PriceRequest(symbol='ETH-USDT'), timeout=5).price
-    except:
-        btc_price = 0
-        eth_price = 0
-
+    # Use cached prices — instant response!
     return {
         "source": "Binance Testnet",
         "USDT": get_testnet_balance('USDT'),
         "BTC":  get_testnet_balance('BTC'),
         "ETH":  get_testnet_balance('ETH'),
-        "BTC_PRICE": btc_price,
-        "ETH_PRICE": eth_price,
+        "BTC_PRICE": _price_cache["BTC_PRICE"],
+        "ETH_PRICE": _price_cache["ETH_PRICE"],
     }
 
 @app.get("/trades")
