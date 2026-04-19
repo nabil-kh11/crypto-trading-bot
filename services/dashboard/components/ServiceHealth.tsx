@@ -2,11 +2,11 @@
 import React, { useEffect, useState } from 'react'
 
 const SERVICES = [
-  { name: 'Market Data', url: 'http://localhost:8090/api/market/health', port: 8090 },
-  { name: 'ML Engine',   url: 'http://localhost:8090/api/ml/health', port: 8090 },
-  { name: 'Sentiment',   url: 'http://localhost:8090/api/sentiment/health', port: 8090 },
-  { name: 'Order Exec',  url: 'http://localhost:8090/api/trade/health', port: 8090 },
-  { name: 'Chatbot',     url: 'http://localhost:8090/api/chat/health', port: 8090 },
+  { name: 'Market Data', url: 'http://localhost:8001/health' },
+  { name: 'ML Engine',   url: 'http://localhost:8002/health' },
+  { name: 'Sentiment',   url: 'http://localhost:8003/health' },
+  { name: 'Order Exec',  url: 'http://localhost:8004/health' },
+  { name: 'Chatbot',     url: 'http://localhost:8005/health' },
 ]
 
 export default function ServiceHealth() {
@@ -37,7 +37,7 @@ export default function ServiceHealth() {
         {SERVICES.map(s => (
           <div key={s.name} className="flex items-center gap-2">
             <span className={`w-2 h-2 rounded-full ${
-              statuses[s.name] === undefined ? 'bg-gray-500' :
+              statuses[s.name] === undefined ? 'bg-gray-500 animate-pulse' :
               statuses[s.name] ? 'bg-green-500' : 'bg-red-500'
             }`}></span>
             <span className="text-xs text-gray-300">{s.name}</span>

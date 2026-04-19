@@ -14,14 +14,19 @@ import SignalHistory from '@/components/SignalHistory'
 import ConfidenceTrend from '@/components/ConfidenceTrend'
 import WinRate from '@/components/WinRate'
 import SentimentGauge from '@/components/SentimentGauge'
+import PnLSummary from '@/components/PnLSummary'
+import TradeAnalytics from '@/components/TradeAnalytics'
+import SignalHeatmap from '@/components/SignalHeatmap'
+import LiveActivityFeed from '@/components/LiveActivityFeed'
+import RiskDashboard from '@/components/RiskDashboard'
 
 export default function Dashboard() {
-  const [btcPrice, setBtcPrice]       = useState<any>(null)
-  const [ethPrice, setEthPrice]       = useState<any>(null)
+  const [btcPrice, setBtcPrice]         = useState<any>(null)
+  const [ethPrice, setEthPrice]         = useState<any>(null)
   const [btcSentiment, setBtcSentiment] = useState<any>(null)
   const [ethSentiment, setEthSentiment] = useState<any>(null)
-  const [lastUpdate, setLastUpdate]   = useState<string>('')
-  const [wsConnected, setWsConnected] = useState<boolean>(false)
+  const [lastUpdate, setLastUpdate]     = useState<string>('')
+  const [wsConnected, setWsConnected]   = useState<boolean>(false)
 
   // WebSocket for real-time prices
   useEffect(() => {
@@ -78,7 +83,7 @@ export default function Dashboard() {
       }
     }
     fetchSentiment()
-    const interval = setInterval(fetchSentiment, 300000) // 5 minutes
+    const interval = setInterval(fetchSentiment, 300000)
     return () => clearInterval(interval)
   }, [])
 
@@ -103,8 +108,17 @@ export default function Dashboard() {
           </div>
         </div>
 
+        {/* Service Health */}
         <ServiceHealth />
+
+        {/* Trading Statistics */}
         <WinRate />
+
+        {/* Live Activity Feed + Risk Dashboard */}
+        <div className="grid grid-cols-2 gap-4 mb-6">
+          <LiveActivityFeed />
+          <RiskDashboard />
+        </div>
 
         {/* Price Cards */}
         <div className="grid grid-cols-2 gap-4 mb-6">
@@ -151,7 +165,7 @@ export default function Dashboard() {
           <ConfidenceTrend symbol="ETH/USDT" color="#60a5fa" />
         </div>
 
-        {/* Charts */}
+        {/* Price Charts */}
         <div className="grid grid-cols-2 gap-4 mb-6">
           <PriceChart symbol="BTC-USDT" color="#f97316" label="BTC" />
           <PriceChart symbol="ETH-USDT" color="#60a5fa" label="ETH" />
@@ -164,14 +178,28 @@ export default function Dashboard() {
           <SentimentGauge btc={btcSentiment} eth={ethSentiment} />
         </div>
 
-        {/* Portfolio */}
+        {/* Portfolio Cards */}
         <div className="grid grid-cols-2 gap-4 mb-6">
           <PortfolioCard title="BTC Portfolio" asset="BTC" price={btcPrice?.price} />
           <PortfolioCard title="ETH Portfolio" asset="ETH" price={ethPrice?.price} />
         </div>
 
+        {/* P&L Summary */}
+        <PnLSummary />
+
+        {/* Trade Analytics */}
+        <TradeAnalytics />
+
+        {/* Signal Heatmap */}
+        <SignalHeatmap />
+
+        {/* Recent Trades */}
         <TradesTable />
+
+        {/* Portfolio Chart */}
         <PortfolioChart />
+
+        {/* Chatbot */}
         <ChatBot />
 
       </div>
