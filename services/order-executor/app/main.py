@@ -1,10 +1,10 @@
 import uvicorn
 import threading
 import time
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from app.database import init_db, init_signals_table, get_all_trades, get_signals, get_trades_count
-from app.executor import execute_trade
+from app.executor import execute_trade, get_active_strategy_name, set_strategy, STRATEGIES
 from app.consumer import start_consumer_thread
 from app.binance_executor import get_testnet_balance
 from app.grpc_server import serve as grpc_serve
@@ -31,7 +31,6 @@ app.add_middleware(
 _price_cache = {"BTC_PRICE": 0.0, "ETH_PRICE": 0.0}
 
 def update_price_cache():
-    """Background thread to update BTC/ETH prices every 60 seconds"""
     while True:
         try:
             import grpc
@@ -53,11 +52,9 @@ def startup():
     init_signals_table()
     start_consumer_thread()
 
-    # Start gRPC server
     grpc_thread = threading.Thread(target=grpc_serve, daemon=False)
     grpc_thread.start()
 
-    # Start price cache updater
     price_thread = threading.Thread(target=update_price_cache, daemon=True)
     price_thread.start()
 
@@ -132,7 +129,6 @@ def get_signals_history(symbol: str = None, limit: int = 100):
 
 @app.get("/balance")
 def get_balance():
-    # Use cached prices — instant response!
     return {
         "source": "Binance Testnet",
         "USDT": get_testnet_balance('USDT'),
@@ -152,6 +148,21 @@ def get_trades(symbol: str = None, limit: int = 10, offset: int = 0):
 @app.get("/symbols")
 def symbols():
     return {"symbols": ["BTC/USDT", "ETH/USDT"]}
+
+@app.get("/strategy")
+def get_strategy():
+    name = get_active_strategy_name()
+    return {
+        "active": name,
+        "strategy": STRATEGIES[name],
+        "available": list(STRATEGIES.keys())
+    }
+
+@app.post("/strategy/{name}")
+def change_strategy(name: str):
+    if set_strategy(name):
+        return {"message": f"Strategy changed to {name}", "active": name}
+    raise HTTPException(status_code=400, detail=f"Unknown strategy: {name}")
 
 if __name__ == "__main__":
     uvicorn.run("app.main:app", host=HOST, port=PORT, reload=True)

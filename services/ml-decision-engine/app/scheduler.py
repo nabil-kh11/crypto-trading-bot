@@ -77,7 +77,7 @@ def stream_candles_for_symbol(symbol: str) -> None:
             stub = market_data_pb2_grpc.MarketDataServiceStub(channel)
             request = market_data_pb2.StreamRequest(
                 symbol=symbol.replace('/', '-'),
-                interval_seconds=3600
+                interval_seconds=60
             )
             print(f"[Stream] Connected to market-data-collector for {symbol}")
             for candle in stub.StreamCandles(request):

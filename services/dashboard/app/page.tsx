@@ -19,6 +19,7 @@ import TradeAnalytics from '@/components/TradeAnalytics'
 import SignalHeatmap from '@/components/SignalHeatmap'
 import LiveActivityFeed from '@/components/LiveActivityFeed'
 import RiskDashboard from '@/components/RiskDashboard'
+import StrategySelector from '@/components/StrategySelector'
 
 export default function Dashboard() {
   const [btcPrice, setBtcPrice]         = useState<any>(null)
@@ -110,6 +111,8 @@ export default function Dashboard() {
 
         {/* Service Health */}
         <ServiceHealth />
+        <StrategySelector />
+
 
         {/* Trading Statistics */}
         <WinRate />

@@ -2,6 +2,59 @@
 'use client'
 import { useEffect, useState } from 'react'
 
+function calculatePositionPnL(trades: any[]) {
+  const sorted = [...trades].sort((a, b) =>
+    new Date(a.executed_at).getTime() - new Date(b.executed_at).getTime()
+  )
+
+  const symbols = ['BTC/USDT', 'ETH/USDT']
+  const results: any[] = []
+
+  symbols.forEach(symbol => {
+    const symTrades = sorted.filter(t => t.symbol === symbol)
+
+    let position = 0
+    let totalCost = 0
+    let lastBuyTime: string | null = null
+
+    symTrades.forEach(trade => {
+      if (trade.signal === 'BUY') {
+        totalCost += trade.price * trade.quantity
+        position += trade.quantity
+        lastBuyTime = trade.executed_at
+      } else if (trade.signal === 'SELL' && position > 0) {
+        const avgCost = position > 0 ? totalCost / position : 0
+        const sellQty = Math.min(trade.quantity, position)
+        const pnl = (trade.price - avgCost) * sellQty
+        const holdHours = lastBuyTime
+          ? (new Date(trade.executed_at).getTime() - new Date(lastBuyTime).getTime()) / 3600000
+          : 0
+
+        results.push({
+          symbol,
+          sellPrice: trade.price,
+          buyPrice: avgCost,
+          quantity: sellQty,
+          pnl,
+          holdHours,
+          profitable: pnl > 0,
+          executed_at: trade.executed_at
+        })
+
+        const costReduced = avgCost * sellQty
+        totalCost -= costReduced
+        position -= sellQty
+        if (position < 0.000001) {
+          position = 0
+          totalCost = 0
+        }
+      }
+    })
+  })
+
+  return results
+}
+
 export default function WinRate() {
   const [stats, setStats] = useState<any>(null)
 
@@ -14,19 +67,12 @@ export default function WinRate() {
         if (trades.length === 0) return
 
         const buys  = trades.filter((t: any) => t.signal === 'BUY')
-        const sells = trades.filter((t: any) => t.signal === 'SELL' || t.trade_type === 'STOP_LOSS')
+        const sells = trades.filter((t: any) => t.signal === 'SELL')
 
-        const avgBuyPrice = buys.length > 0
-          ? buys.reduce((s: number, b: any) => s + b.price, 0) / buys.length
-          : 0
-
-        const profitableSells = sells.filter((t: any) =>
-          avgBuyPrice > 0 ? t.price > avgBuyPrice : t.capital_after > t.capital_before
-        )
-
-        const winRate = sells.length > 0
-          ? (profitableSells.length / sells.length * 100).toFixed(1)
-          : 'N/A'
+        const matched = calculatePositionPnL(trades)
+        const wins = matched.filter(t => t.profitable).length
+        const winRate = matched.length > 0
+          ? (wins / matched.length * 100).toFixed(1) : 'N/A'
 
         const totalVolume = trades.reduce((s: number, t: any) =>
           s + (t.price * t.quantity || 0), 0)
@@ -48,7 +94,7 @@ export default function WinRate() {
     }
 
     fetchTrades()
-    const interval = setInterval(fetchTrades, 60000) // refresh every 1 min
+    const interval = setInterval(fetchTrades, 60000)
     return () => clearInterval(interval)
   }, [])
 
@@ -68,7 +114,7 @@ export default function WinRate() {
               stats.winRate === 'N/A' ? 'text-gray-400' :
               parseFloat(stats.winRate) >= 50 ? 'text-green-400' : 'text-red-400'
             }`}>{stats.winRate}{stats.winRate !== 'N/A' ? '%' : ''}</p>
-            <p className="text-gray-500 text-xs">Sell above avg buy</p>
+            <p className="text-gray-500 text-xs">Position matched</p>
           </div>
           <div className="bg-gray-800 rounded-lg p-3 text-center">
             <p className="text-gray-500 text-xs">Avg Confidence</p>

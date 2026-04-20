@@ -104,7 +104,7 @@ services:
       - BINANCE_TESTNET_API_KEY=${BINANCE_TESTNET_API_KEY}
       - BINANCE_TESTNET_SECRET_KEY=${BINANCE_TESTNET_SECRET_KEY}
       - USE_TESTNET=true
-      - MIN_CONFIDENCE=50.0
+      - MIN_CONFIDENCE=30.0
     volumes:
       - .env:/app/.env
     depends_on:
