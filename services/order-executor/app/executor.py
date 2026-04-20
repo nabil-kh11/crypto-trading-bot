@@ -211,19 +211,25 @@ def calculate_volatility_factor(atr: float, price: float) -> float:
         return 0.75
     return 1.0
 
-def check_max_daily_loss(symbol: str, current_balance: float) -> bool:
+def check_max_daily_loss(symbol: str, total_portfolio: float) -> bool:
+    """
+    Check daily loss based on TOTAL portfolio value
+    (USDT + BTC value + ETH value)
+    Not just USDT balance!
+    """
     s = get_strategy()
     today = datetime.utcnow().date().isoformat()
     key = f"{symbol}_{today}"
+
     if key not in _daily_start_balance:
-        _daily_start_balance[key] = current_balance
+        _daily_start_balance[key] = total_portfolio
         return False
     start = _daily_start_balance[key]
     if start <= 0:
         return False
-    loss_pct = (start - current_balance) / start
+    loss_pct = (start - total_portfolio) / start
     if loss_pct >= s['max_daily_loss']:
-        print(f"[RiskMgmt] Daily loss limit reached: {loss_pct*100:.1f}%")
+        print(f"[RiskMgmt] Daily loss limit: {loss_pct*100:.1f}% >= {s['max_daily_loss']*100:.0f}%")
         return True
     return False
 
@@ -350,7 +356,6 @@ def check_min_hold_time(symbol: str, pnl_pct: float = 0) -> bool:
 def execute_trade(symbol: str) -> dict:
     s = get_strategy()
 
-    # If strategy is OFF → don't trade
     if _active_strategy == 'off':
         return {"status": "disabled", "reason": "Trading is OFF"}
 
@@ -365,7 +370,18 @@ def execute_trade(symbol: str) -> dict:
         if not candle:
             return {"status": "error", "message": "Could not get market data"}
 
-        if check_max_daily_loss(symbol, usdt_balance):
+        # Calculate TOTAL portfolio = USDT + all crypto holdings
+        btc_balance = get_testnet_balance('BTC')
+        eth_balance = get_testnet_balance('ETH')
+        if 'BTC' in symbol:
+            btc_price = price
+            eth_price = get_latest_price('ETH/USDT')
+        else:
+            btc_price = get_latest_price('BTC/USDT')
+            eth_price = price
+        total_portfolio = usdt_balance + (btc_balance * btc_price) + (eth_balance * eth_price)
+
+        if check_max_daily_loss(symbol, total_portfolio):
             return {"status": "blocked", "reason": "Daily loss limit reached"}
 
         signal_data = get_ml_signal(symbol, candle)
@@ -376,7 +392,6 @@ def execute_trade(symbol: str) -> dict:
         confidence = signal_data['confidence']
         model      = signal_data.get('model', 'Unknown')
 
-        # Check confidence against strategy threshold
         if confidence < s['min_confidence'] and signal != 'HOLD':
             return {"status": "filtered",
                     "reason": f"Confidence {confidence:.1f}% < {s['min_confidence']}%",
@@ -391,7 +406,8 @@ def execute_trade(symbol: str) -> dict:
         })
 
         print(f"[{s['name']}] {symbol} | {signal} ({confidence:.1f}%) | "
-              f"USDT={usdt_balance:.2f} | {asset}={asset_balance:.6f}")
+              f"USDT={usdt_balance:.2f} | {asset}={asset_balance:.6f} | "
+              f"Portfolio=${total_portfolio:.2f}")
 
     except Exception as e:
         return {"status": "error", "message": str(e)}

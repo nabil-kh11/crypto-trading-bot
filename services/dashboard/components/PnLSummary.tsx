@@ -148,9 +148,11 @@ export default function PnLSummary() {
 
         <div className="bg-gray-800 rounded-lg p-3 text-center">
           <p className="text-gray-500 text-xs">Best Trade</p>
-          <p className="text-xl font-bold text-green-400">
-            {stats.bestTrade ? `+$${stats.bestTrade.pnl.toFixed(2)}` : 'N/A'}
-          </p>
+            <p className="text-xl font-bold text-green-400">
+            {stats.bestTrade 
+                ? `${stats.bestTrade.pnl >= 0 ? '+' : ''}$${stats.bestTrade.pnl.toFixed(2)}` 
+                : 'N/A'}
+            </p>
           <p className="text-gray-500 text-xs">
             {stats.bestTrade ? stats.bestTrade.symbol : '---'}
           </p>
