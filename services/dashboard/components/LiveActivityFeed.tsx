@@ -63,7 +63,7 @@ export default function LiveActivityFeed() {
               )}
             </div>
             <span className="text-gray-600 text-xs">
-              {new Date(a.executed_at).toLocaleTimeString()}
+              {new Date(a.executed_at + 'Z').toLocaleString('fr-TN', { timeZone: 'Africa/Tunis' })}
             </span>
           </div>
         ))}

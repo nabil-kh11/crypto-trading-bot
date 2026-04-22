@@ -107,6 +107,7 @@ services:
       - MIN_CONFIDENCE=30.0
     volumes:
       - .env:/app/.env
+      - ./logs/order-executor:/app/logs
     depends_on:
       postgres:
         condition: service_healthy

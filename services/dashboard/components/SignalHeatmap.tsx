@@ -15,14 +15,12 @@ export default function SignalHeatmap() {
         const res = await fetch('http://localhost:8004/trades?limit=1000&offset=0')
         const data = await res.json()
         const trades = data.trades || []
-
         const map: Record<string, number> = {}
         trades.forEach((t: any) => {
-          const d = new Date(t.executed_at)
+          const d = new Date(t.executed_at + 'Z')
           const key = `${d.getDay()}-${d.getHours()}`
           map[key] = (map[key] || 0) + 1
         })
-
         setHeatmap(map)
         setMaxVal(Math.max(...Object.values(map), 1))
       } catch (e) {
@@ -33,66 +31,95 @@ export default function SignalHeatmap() {
   }, [])
 
   const getColor = (val: number) => {
-    if (val === 0) return '#1f2937'
-    const intensity = val / maxVal
-    if (intensity > 0.66) return '#22c55e'
-    if (intensity > 0.33) return '#eab308'
-    return '#3b82f6'
-  }
+  if (val === 0) return '#111827'
+  const intensity = val / maxVal
+  if (intensity > 0.66) return '#7c3aed'  // deep purple
+  if (intensity > 0.33) return '#a78bfa'  // medium purple
+  return '#ddd6fe'                          // light purple
+}
+
+const getBorder = (val: number) => {
+  if (val === 0) return '1px solid #1f2937'
+  const intensity = val / maxVal
+  if (intensity > 0.66) return '1px solid #6d28d9'
+  if (intensity > 0.33) return '1px solid #8b5cf6'
+  return '1px solid #c4b5fd'
+}
 
   return (
-    <div className="bg-gray-900 rounded-xl p-4 border border-gray-800 mb-6">
-      <p className="text-gray-400 text-sm mb-1">Signal Activity Heatmap</p>
-      <p className="text-gray-600 text-xs mb-3">Trade frequency by hour and day of week</p>
-      <div className="overflow-x-auto">
-        <table className="text-xs">
-          <thead>
-            <tr>
-              <th className="text-gray-500 pr-2 text-right w-8"></th>
-              {HOURS.map(h => (
-                <th key={h} className="text-gray-600 text-center px-0.5 w-6">
-                  {h % 4 === 0 ? `${h}h` : ''}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {DAYS.map((day, di) => (
-              <tr key={day}>
-                <td className="text-gray-500 pr-2 text-right">{day}</td>
-                {HOURS.map(h => {
-                  const val = heatmap[`${di}-${h}`] || 0
-                  return (
-                    <td key={h} className="px-0.5 py-0.5">
-                      <div
-                        style={{
-                          width: '18px', height: '18px',
-                          backgroundColor: getColor(val),
-                          borderRadius: '2px'
-                        }}
-                        title={`${day} ${h}:00 — ${val} trades`}
-                      />
-                    </td>
-                  )
-                })}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        <div className="flex gap-3 mt-2">
-          <span className="flex items-center gap-1 text-xs text-gray-500">
-            <div style={{ width: 12, height: 12, backgroundColor: '#1f2937', borderRadius: 2 }} /> 0
-          </span>
-          <span className="flex items-center gap-1 text-xs text-gray-500">
-            <div style={{ width: 12, height: 12, backgroundColor: '#3b82f6', borderRadius: 2 }} /> Low
-          </span>
-          <span className="flex items-center gap-1 text-xs text-gray-500">
-            <div style={{ width: 12, height: 12, backgroundColor: '#eab308', borderRadius: 2 }} /> Medium
-          </span>
-          <span className="flex items-center gap-1 text-xs text-gray-500">
-            <div style={{ width: 12, height: 12, backgroundColor: '#22c55e', borderRadius: 2 }} /> High
-          </span>
+    <div className="bg-gray-900 rounded-xl p-6 border border-gray-800 mb-6">
+      <div className="flex justify-between items-center mb-4">
+        <div>
+          <p className="text-white text-sm font-semibold">Signal Activity Heatmap</p>
+          <p className="text-gray-500 text-xs mt-0.5">
+            Trade frequency by hour and day of week
+          </p>
         </div>
+        <div className="flex gap-4">
+          {[
+           { color: '#111827', border: '#1f2937', label: 'None' },
+            { color: '#ddd6fe', border: '#c4b5fd', label: 'Low' },
+            { color: '#a78bfa', border: '#8b5cf6', label: 'Medium' },
+            { color: '#7c3aed', border: '#6d28d9', label: 'High' },
+          ].map(({ color, border, label }) => (
+            <span key={label} className="flex items-center gap-1.5 text-xs text-gray-400">
+              <div style={{
+                width: 14, height: 14,
+                backgroundColor: color,
+                border: `1px solid ${border}`,
+                borderRadius: 3
+              }} />
+              {label}
+            </span>
+          ))}
+        </div>
+      </div>
+
+      <div className="w-full">
+        {/* Hour labels */}
+        <div className="flex mb-2 pl-12">
+          {HOURS.map(h => (
+            <div key={h} className="flex-1 text-center text-gray-500"
+              style={{ fontSize: '10px' }}>
+              {h % 3 === 0 ? `${h}h` : ''}
+            </div>
+          ))}
+        </div>
+
+        {/* Grid rows */}
+        {DAYS.map((day, di) => (
+          <div key={day} className="flex items-center mb-1.5">
+            <div className="text-gray-400 text-xs font-medium w-12 text-right pr-3 flex-shrink-0">
+              {day}
+            </div>
+            {HOURS.map(h => {
+              const val = heatmap[`${di}-${h}`] || 0
+              return (
+                <div
+                  key={h}
+                  className="flex-1 mx-0.5 transition-all duration-200 hover:scale-110 cursor-default"
+                  title={`${day} ${h}:00 — ${val} trade${val !== 1 ? 's' : ''}`}
+                >
+                  <div style={{
+                    backgroundColor: getColor(val),
+                    border: getBorder(val),
+                    borderRadius: '5px',
+                    aspectRatio: '1',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '9px',
+                    fontWeight: 'bold',
+                    color: val > 0 ? 'rgba(255,255,255,0.9)' : 'transparent',
+                    boxShadow: val > 0 ? `0 0 6px ${getColor(val)}60` : 'none',
+                  }}>
+                    {val > 0 ? val : ''}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        ))}
       </div>
     </div>
   )

@@ -7,6 +7,11 @@ from app.binance_executor import (place_market_buy, place_market_sell,
                                    get_testnet_balance)
 from app import ml_engine_pb2, ml_engine_pb2_grpc
 from app import market_data_pb2, market_data_pb2_grpc
+from app.audit_logger import (
+    log_signal_received, log_trade_filtered, log_trade_executed,
+    log_stop_loss, log_daily_loss_limit, log_trade_error,
+    log_strategy_change, log_hold
+)
 
 FEATURE_COLS = [
     'ma20', 'ma50', 'ma200', 'rsi', 'returns', 'vol_20',
@@ -29,63 +34,63 @@ STRATEGIES = {
         'name': 'Scalping',
         'description': 'Short-term, frequent trades, small profits',
         'min_confidence':   35.0,
-        'stop_loss':        0.02,   # 2%
-        'trailing_stop':    0.01,   # 1%
-        'take_profit_1':    0.02,   # 2% → sell 30%
-        'take_profit_2':    0.04,   # 4% → sell 50%
-        'take_profit_3':    0.06,   # 6% → sell 100%
+        'stop_loss':        0.02,
+        'trailing_stop':    0.01,
+        'take_profit_1':    0.02,
+        'take_profit_2':    0.04,
+        'take_profit_3':    0.06,
         'min_hold_hours':   0,
         'rsi_overbought':   80,
         'rsi_oversold':     20,
         'use_trend_filter': False,
         'use_stoch_filter': False,
         'use_volume_filter':False,
-        'max_daily_loss':   0.05,   # 5%
-        'base_risk':        0.05,   # 5% per trade
-        'max_risk':         0.15,   # 15% max
+        'max_daily_loss':   0.05,
+        'base_risk':        0.05,
+        'max_risk':         0.15,
     },
     'swing': {
         'name': 'Swing Trading',
         'description': 'Medium-term, balanced risk/reward',
         'min_confidence':   50.0,
-        'stop_loss':        0.05,   # 5%
-        'trailing_stop':    0.03,   # 3%
-        'take_profit_1':    0.10,   # 10% → sell 30%
-        'take_profit_2':    0.15,   # 15% → sell 50%
-        'take_profit_3':    0.20,   # 20% → sell 100%
+        'stop_loss':        0.05,
+        'trailing_stop':    0.03,
+        'take_profit_1':    0.10,
+        'take_profit_2':    0.15,
+        'take_profit_3':    0.20,
         'min_hold_hours':   4,
         'rsi_overbought':   70,
         'rsi_oversold':     30,
         'use_trend_filter': True,
         'use_stoch_filter': True,
         'use_volume_filter':True,
-        'max_daily_loss':   0.10,   # 10%
-        'base_risk':        0.02,   # 2% per trade
-        'max_risk':         0.20,   # 20% max
+        'max_daily_loss':   0.10,
+        'base_risk':        0.02,
+        'max_risk':         0.20,
     },
     'position': {
         'name': 'Position Trading',
         'description': 'Long-term, high conviction trades',
         'min_confidence':   70.0,
-        'stop_loss':        0.10,   # 10%
-        'trailing_stop':    0.05,   # 5%
-        'take_profit_1':    0.20,   # 20% → sell 30%
-        'take_profit_2':    0.30,   # 30% → sell 50%
-        'take_profit_3':    0.50,   # 50% → sell 100%
+        'stop_loss':        0.10,
+        'trailing_stop':    0.05,
+        'take_profit_1':    0.20,
+        'take_profit_2':    0.30,
+        'take_profit_3':    0.50,
         'min_hold_hours':   24,
         'rsi_overbought':   75,
         'rsi_oversold':     25,
         'use_trend_filter': True,
         'use_stoch_filter': True,
         'use_volume_filter':True,
-        'max_daily_loss':   0.15,   # 15%
-        'base_risk':        0.10,   # 10% per trade
-        'max_risk':         0.30,   # 30% max
+        'max_daily_loss':   0.15,
+        'base_risk':        0.10,
+        'max_risk':         0.30,
     },
     'off': {
         'name': 'Off',
         'description': 'No trading — bot is disabled',
-        'min_confidence':   100.0,  # impossible to meet
+        'min_confidence':   100.0,
         'stop_loss':        0.05,
         'trailing_stop':    0.03,
         'take_profit_1':    0.10,
@@ -103,7 +108,6 @@ STRATEGIES = {
     }
 }
 
-# Active strategy — default swing
 _active_strategy = 'swing'
 
 def get_strategy():
@@ -112,19 +116,19 @@ def get_strategy():
 def set_strategy(name: str) -> bool:
     global _active_strategy
     if name in STRATEGIES:
+        old = _active_strategy
         _active_strategy = name
         print(f"[Strategy] Switched to: {STRATEGIES[name]['name']}")
+        log_strategy_change(old, name)   # ← AUDIT
         return True
     return False
 
 def get_active_strategy_name() -> str:
     return _active_strategy
 
-# gRPC channels
 ML_GRPC_CHANNEL     = 'ml-decision-engine:50052'
 MARKET_GRPC_CHANNEL = 'market-data-collector:50051'
 
-# In-memory tracking
 _highest_prices      = {}
 _daily_start_balance = {}
 
@@ -212,15 +216,9 @@ def calculate_volatility_factor(atr: float, price: float) -> float:
     return 1.0
 
 def check_max_daily_loss(symbol: str, total_portfolio: float) -> bool:
-    """
-    Check daily loss based on TOTAL portfolio value
-    (USDT + BTC value + ETH value)
-    Not just USDT balance!
-    """
     s = get_strategy()
     today = datetime.utcnow().date().isoformat()
     key = f"{symbol}_{today}"
-
     if key not in _daily_start_balance:
         _daily_start_balance[key] = total_portfolio
         return False
@@ -230,6 +228,7 @@ def check_max_daily_loss(symbol: str, total_portfolio: float) -> bool:
     loss_pct = (start - total_portfolio) / start
     if loss_pct >= s['max_daily_loss']:
         print(f"[RiskMgmt] Daily loss limit: {loss_pct*100:.1f}% >= {s['max_daily_loss']*100:.0f}%")
+        log_daily_loss_limit(symbol, loss_pct, s['max_daily_loss'], s['name'])  # ← AUDIT
         return True
     return False
 
@@ -370,7 +369,6 @@ def execute_trade(symbol: str) -> dict:
         if not candle:
             return {"status": "error", "message": "Could not get market data"}
 
-        # Calculate TOTAL portfolio = USDT + all crypto holdings
         btc_balance = get_testnet_balance('BTC')
         eth_balance = get_testnet_balance('ETH')
         if 'BTC' in symbol:
@@ -382,6 +380,7 @@ def execute_trade(symbol: str) -> dict:
         total_portfolio = usdt_balance + (btc_balance * btc_price) + (eth_balance * eth_price)
 
         if check_max_daily_loss(symbol, total_portfolio):
+            # audit logged inside check_max_daily_loss
             return {"status": "blocked", "reason": "Daily loss limit reached"}
 
         signal_data = get_ml_signal(symbol, candle)
@@ -392,7 +391,13 @@ def execute_trade(symbol: str) -> dict:
         confidence = signal_data['confidence']
         model      = signal_data.get('model', 'Unknown')
 
+        # ── AUDIT: log every signal received ─────────────────────────────────
+        log_signal_received(symbol, signal, confidence, model, price, s['name'])
+
         if confidence < s['min_confidence'] and signal != 'HOLD':
+            log_trade_filtered(symbol, signal,
+                               f"Confidence {confidence:.1f}% < {s['min_confidence']}%",
+                               price, s['name'], confidence)  # ← AUDIT
             return {"status": "filtered",
                     "reason": f"Confidence {confidence:.1f}% < {s['min_confidence']}%",
                     "signal": signal, "price": price}
@@ -410,13 +415,16 @@ def execute_trade(symbol: str) -> dict:
               f"Portfolio=${total_portfolio:.2f}")
 
     except Exception as e:
+        log_trade_error(symbol, str(e), s['name'])  # ← AUDIT
         return {"status": "error", "message": str(e)}
 
     avg_buy_price = get_avg_buy_price(symbol)
 
-    # Stop loss check
+    # ── Stop loss ─────────────────────────────────────────────────────────────
     if asset_balance > 0.001 and check_stop_loss(avg_buy_price, price, symbol):
         sell_amount = asset_balance
+        loss_pct = (avg_buy_price - price) / avg_buy_price if avg_buy_price > 0 else 0
+        log_stop_loss(symbol, price, avg_buy_price, sell_amount, loss_pct, s['name'])  # ← AUDIT
         testnet_result = place_market_sell(symbol, sell_amount)
         if testnet_result['success']:
             save_trade({
@@ -428,6 +436,10 @@ def execute_trade(symbol: str) -> dict:
                 "position_value": 0.0,
                 "trade_type": "STOP_LOSS", "status": "EXECUTED"
             })
+            log_trade_executed(symbol, "SELL", testnet_result['price'],
+                               testnet_result['quantity'],
+                               sell_amount * testnet_result['price'],
+                               s['name'], 100.0, "STOP_LOSS")  # ← AUDIT
             return {
                 "status": "stop_loss_executed",
                 "reason": "Stop-loss triggered",
@@ -436,19 +448,30 @@ def execute_trade(symbol: str) -> dict:
                 "usdt_after": get_testnet_balance('USDT')
             }
 
+    # ── BUY ───────────────────────────────────────────────────────────────────
     if signal == "BUY" and usdt_balance > 10:
         if not check_trend_filter(candle, 'BUY'):
+            log_trade_filtered(symbol, "BUY", "Downtrend — MA20 < MA50",
+                               price, s['name'], confidence)  # ← AUDIT
             return {"status": "filtered", "reason": "Downtrend — BUY blocked",
                     "signal": signal, "price": price}
         if not check_rsi_filter(candle, 'BUY'):
+            log_trade_filtered(symbol, "BUY",
+                               f"Overbought — RSI={candle.get('rsi',0):.1f}",
+                               price, s['name'], confidence)  # ← AUDIT
             return {"status": "filtered", "reason": "Overbought — BUY blocked",
                     "signal": signal, "price": price}
         if not check_volume_filter(candle, 'BUY'):
+            log_trade_filtered(symbol, "BUY",
+                               f"Low volume ratio={candle.get('volume_ratio',0):.2f}",
+                               price, s['name'], confidence)  # ← AUDIT
             return {"status": "filtered", "reason": "Low volume — BUY blocked",
                     "signal": signal, "price": price}
 
         invest_amount = calculate_buy_size(usdt_balance, confidence, candle)
         if invest_amount < 5:
+            log_trade_filtered(symbol, "BUY", "Invest amount too small",
+                               price, s['name'], confidence)  # ← AUDIT
             return {"status": "skipped", "reason": "Amount too small"}
 
         testnet_result = place_market_buy(symbol, invest_amount)
@@ -464,6 +487,9 @@ def execute_trade(symbol: str) -> dict:
                 "position_value": testnet_result['quantity'] * testnet_result['price'],
                 "trade_type": "TESTNET", "status": "EXECUTED"
             })
+            log_trade_executed(symbol, "BUY", testnet_result['price'],
+                               testnet_result['quantity'], invest_amount,
+                               s['name'], confidence, "TESTNET", model)  # ← AUDIT
             return {
                 "status": "executed", "signal": "BUY",
                 "strategy": s['name'],
@@ -474,19 +500,28 @@ def execute_trade(symbol: str) -> dict:
                 f"{asset.lower()}_after": get_testnet_balance(asset)
             }
         else:
+            log_trade_error(symbol, testnet_result['error'], s['name'])  # ← AUDIT
             return {"status": "error", "message": testnet_result['error']}
 
+    # ── SELL ──────────────────────────────────────────────────────────────────
     elif signal == "SELL" and asset_balance > 0.001:
         pnl_pct = ((price - avg_buy_price) / avg_buy_price * 100) if avg_buy_price > 0 else 0
 
         if not check_min_hold_time(symbol, pnl_pct):
+            log_trade_filtered(symbol, "SELL", "Min hold time not reached",
+                               price, s['name'], confidence)  # ← AUDIT
             return {"status": "filtered",
                     "reason": "Min hold time not reached",
                     "signal": signal, "price": price}
         if not check_trend_filter(candle, 'SELL'):
+            log_trade_filtered(symbol, "SELL", "Uptrend still active — SELL blocked",
+                               price, s['name'], confidence)  # ← AUDIT
             return {"status": "filtered", "reason": "Uptrend — SELL blocked",
                     "signal": signal, "price": price}
         if not check_rsi_filter(candle, 'SELL'):
+            log_trade_filtered(symbol, "SELL",
+                               f"Oversold — RSI={candle.get('rsi',0):.1f}",
+                               price, s['name'], confidence)  # ← AUDIT
             return {"status": "filtered", "reason": "Oversold — SELL blocked",
                     "signal": signal, "price": price}
 
@@ -494,6 +529,8 @@ def execute_trade(symbol: str) -> dict:
             asset_balance, confidence, avg_buy_price, price, symbol
         )
         if sell_amount < 0.0001:
+            log_trade_filtered(symbol, "SELL", "Sell amount too small",
+                               price, s['name'], confidence)  # ← AUDIT
             return {"status": "skipped", "reason": "Sell amount too small"}
 
         testnet_result = place_market_sell(symbol, sell_amount)
@@ -508,6 +545,10 @@ def execute_trade(symbol: str) -> dict:
                 "position_value": (asset_balance - sell_amount) * price,
                 "trade_type": "TESTNET", "status": "EXECUTED"
             })
+            log_trade_executed(symbol, "SELL", testnet_result['price'],
+                               testnet_result['quantity'],
+                               sell_amount * testnet_result['price'],
+                               s['name'], confidence, "TESTNET", model)  # ← AUDIT
             return {
                 "status": "executed", "signal": "SELL",
                 "strategy": s['name'],
@@ -517,9 +558,12 @@ def execute_trade(symbol: str) -> dict:
                 f"{asset.lower()}_after": get_testnet_balance(asset)
             }
         else:
+            log_trade_error(symbol, testnet_result['error'], s['name'])  # ← AUDIT
             return {"status": "error", "message": testnet_result['error']}
 
+    # ── HOLD ──────────────────────────────────────────────────────────────────
     else:
+        log_hold(symbol, signal, confidence, price, s['name'])  # ← AUDIT
         return {
             "status": "hold", "signal": signal,
             "strategy": s['name'],

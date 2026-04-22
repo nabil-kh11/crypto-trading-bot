@@ -79,7 +79,7 @@ export default function TradesTable() {
                 <td className="py-2 text-gray-300">{trade.quantity?.toFixed(6)}</td>
                 <td className="py-2 text-gray-300">{trade.confidence?.toFixed(1)}%</td>
                 <td className="py-2 text-green-400">{trade.status}</td>
-                <td className="py-2 text-gray-500">{new Date(trade.executed_at).toLocaleString()}</td>
+                <td className="py-2 text-gray-500">{new Date(trade.executed_at + 'Z').toLocaleString('fr-TN', { timeZone: 'Africa/Tunis' })}</td>
               </tr>
             ))}
           </tbody>
