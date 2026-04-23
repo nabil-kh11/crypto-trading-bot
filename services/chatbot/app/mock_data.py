@@ -93,17 +93,17 @@ MOCK_POSTS = [
     ("Web3 development activity at all time high despite bear market", "CryptoCurrency", "GENERAL", "POSITIVE", 0.74),
 ]
 
+
 def generate_extended_posts(base_posts, target=1000):
     """Generate extended dataset by creating variations of base posts"""
     extended = []
-    scores = [0.9, 0.8, 0.75, 0.7, 0.65, -0.65, -0.7, -0.75, -0.8, -0.9, 0.02, 0.03, -0.02]
-    
+
     price_levels_btc = ["$60k", "$65k", "$70k", "$75k", "$80k", "$85k", "$90k", "$100k"]
     price_levels_eth = ["$1500", "$2000", "$2500", "$3000", "$3500", "$4000", "$4500"]
-    
-    timeframes = ["today", "this week", "this month", "in the last 24 hours", 
+
+    timeframes = ["today", "this week", "this month", "in the last 24 hours",
                   "this morning", "overnight", "in the past hour"]
-    
+
     while len(extended) < target:
         for title, subreddit, asset, label, score in base_posts:
             if len(extended) >= target:
@@ -118,35 +118,55 @@ def generate_extended_posts(base_posts, target=1000):
                 new_price = random.choice(price_levels_eth)
                 variation = variation.replace("$3500", old_price).replace("$4000", new_price)
             timeframe = random.choice(timeframes)
-            variation = f"{variation} — {timeframe}"
+            variation = f"{variation} - {timeframe}"
             score_variation = score + random.uniform(-0.05, 0.05)
             score_variation = max(-1.0, min(1.0, score_variation))
             extended.append((variation, subreddit, asset, label, score_variation))
-    
+
     return extended[:target]
+
 
 def seed_database():
     """Seed the database with 1000+ mock posts"""
     conn = psycopg2.connect(DATABASE_URL)
     cursor = conn.cursor()
-    
+
+    # Create table if it doesn't exist (safe for fresh K8s PostgreSQL)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS sentiment_posts (
+            id SERIAL PRIMARY KEY,
+            post_id VARCHAR(50) UNIQUE,
+            subreddit VARCHAR(100),
+            title TEXT,
+            body TEXT,
+            score INTEGER,
+            num_comments INTEGER,
+            created_utc TIMESTAMP,
+            sentiment_label VARCHAR(20),
+            sentiment_score FLOAT,
+            asset VARCHAR(20),
+            scraped_at TIMESTAMP DEFAULT NOW()
+        )
+    """)
+    conn.commit()
+
     cursor.execute("SELECT COUNT(*) FROM sentiment_posts")
     count = cursor.fetchone()[0]
-    
+
     if count >= 100:
-        print(f"Database already has {count} posts — skipping seed")
+        print(f"Database already has {count} posts - skipping seed")
         cursor.close()
         conn.close()
         return count
 
     extended_posts = generate_extended_posts(MOCK_POSTS, target=1000)
-    
+
     import uuid
     inserted = 0
     base_time = datetime.datetime.now() - datetime.timedelta(days=30)
-    
+
     for i, (title, subreddit, asset, label, score) in enumerate(extended_posts):
-        post_time = base_time + datetime.timedelta(hours=i*0.72)
+        post_time = base_time + datetime.timedelta(hours=i * 0.72)
         try:
             cursor.execute("""
                 INSERT INTO sentiment_posts
@@ -169,7 +189,7 @@ def seed_database():
             inserted += 1
         except Exception as e:
             print(f"Error inserting post: {e}")
-    
+
     conn.commit()
     cursor.close()
     conn.close()
