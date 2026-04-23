@@ -434,7 +434,8 @@ def execute_trade(symbol: str) -> dict:
                 "capital_before": 0.0,
                 "capital_after": sell_amount * testnet_result['price'],
                 "position_value": 0.0,
-                "trade_type": "STOP_LOSS", "status": "EXECUTED"
+                "trade_type": "STOP_LOSS", "status": "EXECUTED",
+                "strategy": s['name']
             })
             log_trade_executed(symbol, "SELL", testnet_result['price'],
                                testnet_result['quantity'],
@@ -485,7 +486,8 @@ def execute_trade(symbol: str) -> dict:
                 "capital_before": usdt_balance,
                 "capital_after": usdt_balance - invest_amount,
                 "position_value": testnet_result['quantity'] * testnet_result['price'],
-                "trade_type": "TESTNET", "status": "EXECUTED"
+                "trade_type": "TESTNET", "status": "EXECUTED",
+                "strategy": s['name']
             })
             log_trade_executed(symbol, "BUY", testnet_result['price'],
                                testnet_result['quantity'], invest_amount,
@@ -543,7 +545,8 @@ def execute_trade(symbol: str) -> dict:
                 "capital_before": 0.0,
                 "capital_after": sell_amount * testnet_result['price'],
                 "position_value": (asset_balance - sell_amount) * price,
-                "trade_type": "TESTNET", "status": "EXECUTED"
+                "trade_type": "TESTNET", "status": "EXECUTED",
+                "strategy": s['name']
             })
             log_trade_executed(symbol, "SELL", testnet_result['price'],
                                testnet_result['quantity'],

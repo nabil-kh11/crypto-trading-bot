@@ -45,13 +45,14 @@ def save_trade(trade: dict):
     cursor.execute("""
         INSERT INTO trades
         (symbol, signal, confidence, price, quantity,
-         capital_before, capital_after, position_value, trade_type, status)
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+         capital_before, capital_after, position_value, trade_type, status, strategy)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
     """, (
         trade['symbol'], trade['signal'], trade['confidence'],
         trade['price'], trade['quantity'], trade['capital_before'],
         trade['capital_after'], trade['position_value'],
-        trade['trade_type'], trade['status']
+        trade['trade_type'], trade['status'],
+        trade.get('strategy')              # ← new
     ))
     conn.commit()
     cursor.close()
