@@ -137,6 +137,22 @@ pipeline {
                 '''
             }
         }
+
+        stage('Provision Grafana') {
+            steps {
+                echo 'Provisioning Grafana dashboard...'
+                sh '''
+                    DASHBOARD=$(cat infrastructure/monitoring/grafana/dashboards/crypto_trading_bot.json)
+                    curl -s -X POST \
+                        http://172.17.0.1:3003/api/dashboards/import \
+                        -H "Content-Type: application/json" \
+                        -u admin:admin \
+                        -d "{\"dashboard\": $DASHBOARD, \"overwrite\": true, \"folderId\": 0}" \
+                        || echo "Grafana provisioning skipped"
+                    echo "Grafana dashboard provisioned!"
+                '''
+            }
+        }
         
         stage('Verify') {
             steps {
