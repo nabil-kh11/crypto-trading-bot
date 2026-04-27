@@ -8,7 +8,7 @@ export default function SignalCard({ title }: { title: string }) {
 
   useEffect(() => {
     const fetchSignal = () => {
-      fetch(`http://localhost:8090/api/trade/signal/${symbol}`)
+      fetch(`http://localhost:8090/api/ml/signal/${symbol}`)
         .then(r => r.json())
         .then(setData)
         .catch(() => null)
