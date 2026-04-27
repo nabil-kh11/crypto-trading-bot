@@ -64,65 +64,6 @@ def startup():
 def health():
     return {"status": "ok", "service": "order-executor"}
 
-@app.post("/execute/{symbol}")
-def execute(symbol: str):
-    symbol = symbol.replace("-", "/").upper()
-    return execute_trade(symbol)
-
-@app.get("/signal/{symbol}")
-def get_signal_only(symbol: str):
-    symbol = symbol.replace("-", "/").upper()
-    try:
-        import grpc
-        from app import ml_engine_pb2, ml_engine_pb2_grpc
-        from app.executor import get_latest_candle, get_latest_price
-
-        candle = get_latest_candle(symbol)
-        price = get_latest_price(symbol)
-
-        if not candle:
-            return {"signal": "UNKNOWN", "confidence": 0, "price": price}
-
-        FEATURE_COLS = [
-            'ma20', 'ma50', 'ma200', 'rsi', 'returns', 'vol_20',
-            'macd', 'macd_signal', 'macd_diff',
-            'bb_high', 'bb_low', 'bb_mid', 'bb_width', 'bb_pct',
-            'atr', 'stoch_rsi', 'stoch_rsi_k', 'stoch_rsi_d',
-            'volume_ratio', 'dist_ma200', 'dist_ma50',
-            'hour', 'day_of_week',
-            'close_lag_1', 'returns_lag_1',
-            'close_lag_2', 'returns_lag_2',
-            'close_lag_3', 'returns_lag_3',
-            'close_lag_6', 'returns_lag_6',
-            'close_lag_12', 'returns_lag_12',
-            'close_lag_24', 'returns_lag_24'
-        ]
-
-        features = {}
-        for col in FEATURE_COLS:
-            if col in candle:
-                features[col] = float(candle[col])
-
-        if len(features) < 10:
-            return {"signal": "UNKNOWN", "confidence": 0, "price": price}
-
-        channel = grpc.insecure_channel('ml-decision-engine:50052')
-        stub = ml_engine_pb2_grpc.MLEngineServiceStub(channel)
-        request = ml_engine_pb2.PredictRequest(
-            symbol=symbol, features=features, publish=False
-        )
-        response = stub.Predict(request, timeout=10)
-
-        return {
-            "signal": response.signal,
-            "confidence": response.confidence,
-            "model": response.model,
-            "price": price
-        }
-    except Exception as e:
-        print(f"[Signal] Error: {e}")
-        return {"signal": "ERROR", "confidence": 0, "price": 0, "error": str(e)}
-
 @app.get("/signals")
 def get_signals_history(symbol: str = None, limit: int = 100):
     return {"signals": get_signals(symbol=symbol, limit=limit)}

@@ -5,7 +5,6 @@ from app.config import (ML_ENGINE_URL, MARKET_DATA_URL,
 from app.database import save_trade, get_avg_buy_price, get_last_buy_time
 from app.binance_executor import (place_market_buy, place_market_sell,
                                    get_testnet_balance)
-from app import ml_engine_pb2, ml_engine_pb2_grpc
 from app import market_data_pb2, market_data_pb2_grpc
 from app.audit_logger import (
     log_signal_received, log_trade_filtered, log_trade_executed,
