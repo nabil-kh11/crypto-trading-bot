@@ -91,10 +91,8 @@ pipeline {
 
         stage('Integration Tests') {
             steps {
-                echo 'Starting services and running integration tests...'
+                echo 'Running integration tests against running services...'
                 sh '''
-                    docker-compose up -d --no-recreate || true
-                    sleep 30
                     docker-compose ps
                     python3 -m pip install grpcio --break-system-packages --quiet || true
                     GRPC_HOST=172.17.0.1 NGINX_HOST=172.17.0.1 \
