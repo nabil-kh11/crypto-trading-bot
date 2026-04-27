@@ -352,7 +352,7 @@ def check_min_hold_time(symbol: str, pnl_pct: float = 0) -> bool:
         return False
     return True
 
-def execute_trade(symbol: str) -> dict:
+def execute_trade(symbol: str, signal: str, confidence: float, model: str) -> dict:
     s = get_strategy()
 
     if _active_strategy == 'off':
@@ -380,24 +380,14 @@ def execute_trade(symbol: str) -> dict:
         total_portfolio = usdt_balance + (btc_balance * btc_price) + (eth_balance * eth_price)
 
         if check_max_daily_loss(symbol, total_portfolio):
-            # audit logged inside check_max_daily_loss
             return {"status": "blocked", "reason": "Daily loss limit reached"}
 
-        signal_data = get_ml_signal(symbol, candle)
-        if not signal_data:
-            return {"status": "error", "message": "Could not get ML signal"}
-
-        signal     = signal_data['signal']
-        confidence = signal_data['confidence']
-        model      = signal_data.get('model', 'Unknown')
-
-        # ── AUDIT: log every signal received ─────────────────────────────────
         log_signal_received(symbol, signal, confidence, model, price, s['name'])
 
         if confidence < s['min_confidence'] and signal != 'HOLD':
             log_trade_filtered(symbol, signal,
                                f"Confidence {confidence:.1f}% < {s['min_confidence']}%",
-                               price, s['name'], confidence)  # ← AUDIT
+                               price, s['name'], confidence)
             return {"status": "filtered",
                     "reason": f"Confidence {confidence:.1f}% < {s['min_confidence']}%",
                     "signal": signal, "price": price}
@@ -415,7 +405,7 @@ def execute_trade(symbol: str) -> dict:
               f"Portfolio=${total_portfolio:.2f}")
 
     except Exception as e:
-        log_trade_error(symbol, str(e), s['name'])  # ← AUDIT
+        log_trade_error(symbol, str(e), s['name'])
         return {"status": "error", "message": str(e)}
 
     avg_buy_price = get_avg_buy_price(symbol)
@@ -424,7 +414,7 @@ def execute_trade(symbol: str) -> dict:
     if asset_balance > 0.001 and check_stop_loss(avg_buy_price, price, symbol):
         sell_amount = asset_balance
         loss_pct = (avg_buy_price - price) / avg_buy_price if avg_buy_price > 0 else 0
-        log_stop_loss(symbol, price, avg_buy_price, sell_amount, loss_pct, s['name'])  # ← AUDIT
+        log_stop_loss(symbol, price, avg_buy_price, sell_amount, loss_pct, s['name'])
         testnet_result = place_market_sell(symbol, sell_amount)
         if testnet_result['success']:
             save_trade({
@@ -440,7 +430,7 @@ def execute_trade(symbol: str) -> dict:
             log_trade_executed(symbol, "SELL", testnet_result['price'],
                                testnet_result['quantity'],
                                sell_amount * testnet_result['price'],
-                               s['name'], 100.0, "STOP_LOSS")  # ← AUDIT
+                               s['name'], 100.0, "STOP_LOSS")
             return {
                 "status": "stop_loss_executed",
                 "reason": "Stop-loss triggered",
@@ -453,26 +443,26 @@ def execute_trade(symbol: str) -> dict:
     if signal == "BUY" and usdt_balance > 10:
         if not check_trend_filter(candle, 'BUY'):
             log_trade_filtered(symbol, "BUY", "Downtrend — MA20 < MA50",
-                               price, s['name'], confidence)  # ← AUDIT
+                               price, s['name'], confidence)
             return {"status": "filtered", "reason": "Downtrend — BUY blocked",
                     "signal": signal, "price": price}
         if not check_rsi_filter(candle, 'BUY'):
             log_trade_filtered(symbol, "BUY",
                                f"Overbought — RSI={candle.get('rsi',0):.1f}",
-                               price, s['name'], confidence)  # ← AUDIT
+                               price, s['name'], confidence)
             return {"status": "filtered", "reason": "Overbought — BUY blocked",
                     "signal": signal, "price": price}
         if not check_volume_filter(candle, 'BUY'):
             log_trade_filtered(symbol, "BUY",
                                f"Low volume ratio={candle.get('volume_ratio',0):.2f}",
-                               price, s['name'], confidence)  # ← AUDIT
+                               price, s['name'], confidence)
             return {"status": "filtered", "reason": "Low volume — BUY blocked",
                     "signal": signal, "price": price}
 
         invest_amount = calculate_buy_size(usdt_balance, confidence, candle)
         if invest_amount < 5:
             log_trade_filtered(symbol, "BUY", "Invest amount too small",
-                               price, s['name'], confidence)  # ← AUDIT
+                               price, s['name'], confidence)
             return {"status": "skipped", "reason": "Amount too small"}
 
         testnet_result = place_market_buy(symbol, invest_amount)
@@ -491,7 +481,7 @@ def execute_trade(symbol: str) -> dict:
             })
             log_trade_executed(symbol, "BUY", testnet_result['price'],
                                testnet_result['quantity'], invest_amount,
-                               s['name'], confidence, "TESTNET", model)  # ← AUDIT
+                               s['name'], confidence, "TESTNET", model)
             return {
                 "status": "executed", "signal": "BUY",
                 "strategy": s['name'],
@@ -502,7 +492,7 @@ def execute_trade(symbol: str) -> dict:
                 f"{asset.lower()}_after": get_testnet_balance(asset)
             }
         else:
-            log_trade_error(symbol, testnet_result['error'], s['name'])  # ← AUDIT
+            log_trade_error(symbol, testnet_result['error'], s['name'])
             return {"status": "error", "message": testnet_result['error']}
 
     # ── SELL ──────────────────────────────────────────────────────────────────
@@ -511,19 +501,19 @@ def execute_trade(symbol: str) -> dict:
 
         if not check_min_hold_time(symbol, pnl_pct):
             log_trade_filtered(symbol, "SELL", "Min hold time not reached",
-                               price, s['name'], confidence)  # ← AUDIT
+                               price, s['name'], confidence)
             return {"status": "filtered",
                     "reason": "Min hold time not reached",
                     "signal": signal, "price": price}
         if not check_trend_filter(candle, 'SELL'):
             log_trade_filtered(symbol, "SELL", "Uptrend still active — SELL blocked",
-                               price, s['name'], confidence)  # ← AUDIT
+                               price, s['name'], confidence)
             return {"status": "filtered", "reason": "Uptrend — SELL blocked",
                     "signal": signal, "price": price}
         if not check_rsi_filter(candle, 'SELL'):
             log_trade_filtered(symbol, "SELL",
                                f"Oversold — RSI={candle.get('rsi',0):.1f}",
-                               price, s['name'], confidence)  # ← AUDIT
+                               price, s['name'], confidence)
             return {"status": "filtered", "reason": "Oversold — SELL blocked",
                     "signal": signal, "price": price}
 
@@ -532,7 +522,7 @@ def execute_trade(symbol: str) -> dict:
         )
         if sell_amount < 0.0001:
             log_trade_filtered(symbol, "SELL", "Sell amount too small",
-                               price, s['name'], confidence)  # ← AUDIT
+                               price, s['name'], confidence)
             return {"status": "skipped", "reason": "Sell amount too small"}
 
         testnet_result = place_market_sell(symbol, sell_amount)
@@ -551,7 +541,7 @@ def execute_trade(symbol: str) -> dict:
             log_trade_executed(symbol, "SELL", testnet_result['price'],
                                testnet_result['quantity'],
                                sell_amount * testnet_result['price'],
-                               s['name'], confidence, "TESTNET", model)  # ← AUDIT
+                               s['name'], confidence, "TESTNET", model)
             return {
                 "status": "executed", "signal": "SELL",
                 "strategy": s['name'],
@@ -561,12 +551,12 @@ def execute_trade(symbol: str) -> dict:
                 f"{asset.lower()}_after": get_testnet_balance(asset)
             }
         else:
-            log_trade_error(symbol, testnet_result['error'], s['name'])  # ← AUDIT
+            log_trade_error(symbol, testnet_result['error'], s['name'])
             return {"status": "error", "message": testnet_result['error']}
 
     # ── HOLD ──────────────────────────────────────────────────────────────────
     else:
-        log_hold(symbol, signal, confidence, price, s['name'])  # ← AUDIT
+        log_hold(symbol, signal, confidence, price, s['name'])
         return {
             "status": "hold", "signal": signal,
             "strategy": s['name'],

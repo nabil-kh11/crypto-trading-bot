@@ -7,9 +7,12 @@ from app.executor import execute_trade
 def on_message(channel, method, properties, body):
     try:
         signal_data = json.loads(body)
-        symbol = signal_data.get('symbol', 'BTC/USDT')
+        symbol     = signal_data.get('symbol', 'BTC/USDT')
+        signal     = signal_data.get('signal')       
+        confidence = signal_data.get('confidence')    
+        model      = signal_data.get('model', 'Unknown')  
         print(f"Received signal from queue: {signal_data}")
-        result = execute_trade(symbol)
+        result = execute_trade(symbol, signal, confidence, model)  
         print(f"Trade result: {result}")
         channel.basic_ack(delivery_tag=method.delivery_tag)
     except Exception as e:
