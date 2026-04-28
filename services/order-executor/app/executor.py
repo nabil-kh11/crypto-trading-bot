@@ -1,7 +1,8 @@
 import grpc
+import psycopg2
 from datetime import datetime
 from app.config import (ML_ENGINE_URL, MARKET_DATA_URL,
-                        MIN_CONFIDENCE, USE_TESTNET)
+                        MIN_CONFIDENCE, USE_TESTNET,DATABASE_URL)
 from app.database import save_trade, get_avg_buy_price, get_last_buy_time
 from app.binance_executor import (place_market_buy, place_market_sell,
                                    get_testnet_balance)
@@ -107,7 +108,47 @@ STRATEGIES = {
     }
 }
 
-_active_strategy = 'swing'
+def _load_strategy_from_db() -> str:
+    """Load last saved strategy from database"""
+    try:
+        conn = psycopg2.connect(DATABASE_URL)
+        cursor = conn.cursor()
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS bot_settings (
+                key VARCHAR(50) PRIMARY KEY,
+                value VARCHAR(50)
+            )
+        """)
+        conn.commit()
+        cursor.execute("SELECT value FROM bot_settings WHERE key = 'active_strategy'")
+        row = cursor.fetchone()
+        cursor.close()
+        conn.close()
+        if row:
+            print(f"[Strategy] Loaded from DB: {row[0]}")
+            return row[0]
+    except Exception as e:
+        print(f"[Strategy] Could not load from DB: {e}")
+    return 'swing'
+
+def _save_strategy_to_db(name: str):
+    """Save current strategy to database"""
+    try:
+        conn = psycopg2.connect(DATABASE_URL)
+        cursor = conn.cursor()
+        cursor.execute("""
+            INSERT INTO bot_settings (key, value)
+            VALUES ('active_strategy', %s)
+            ON CONFLICT (key) DO UPDATE SET value = %s
+        """, (name, name))
+        conn.commit()
+        cursor.close()
+        conn.close()
+    except Exception as e:
+        print(f"[Strategy] Could not save to DB: {e}")
+
+# Load strategy from DB on startup instead of hardcoding 'swing'
+_active_strategy = _load_strategy_from_db()
 
 def get_strategy():
     return STRATEGIES[_active_strategy]
@@ -117,8 +158,9 @@ def set_strategy(name: str) -> bool:
     if name in STRATEGIES:
         old = _active_strategy
         _active_strategy = name
+        _save_strategy_to_db(name)  # ← persist to DB
         print(f"[Strategy] Switched to: {STRATEGIES[name]['name']}")
-        log_strategy_change(old, name)   # ← AUDIT
+        log_strategy_change(old, name)
         return True
     return False
 

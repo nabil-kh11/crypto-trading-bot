@@ -11,7 +11,6 @@ ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, T
 
 const PortfolioChart = React.memo(function PortfolioChart() {
   const [chartData, setChartData] = useState<any>(null)
-  const [initialCapital, setInitialCapital] = useState<number>(0)
   const [allTrades, setAllTrades] = useState<any[]>([])
   const [allBalance, setAllBalance] = useState<any>(null)
   const [startDate, setStartDate] = useState<string>(() => {
@@ -23,13 +22,12 @@ const PortfolioChart = React.memo(function PortfolioChart() {
     new Date().toISOString().split('T')[0]
   )
 
-  // Fetch data ONCE on mount
   useEffect(() => {
     const fetchData = async () => {
       try {
         const [tradesRes, balanceRes] = await Promise.all([
-          fetch('http://localhost:8004/trades?limit=200&offset=0'),
-          fetch('http://localhost:8004/balance')
+          fetch('http://localhost:8090/api/trade/trades?limit=500&offset=0'),
+          fetch('http://localhost:8090/api/trade/balance')
         ])
         const tradesData = await tradesRes.json()
         const balance = await balanceRes.json()
@@ -42,9 +40,8 @@ const PortfolioChart = React.memo(function PortfolioChart() {
     fetchData()
   }, [])
 
-  // Build chart instantly from cached data when dates change
-  const buildChart = useCallback((trades: any[], balance: any) => {
-    if (!trades || trades.length === 0 || !balance) return
+ const buildChart = useCallback((trades: any[], balance: any) => {
+    if (!balance) return
 
     const btcPrice = balance.BTC_PRICE || 0
     const ethPrice = balance.ETH_PRICE || 0
@@ -53,66 +50,66 @@ const PortfolioChart = React.memo(function PortfolioChart() {
     const ethNow   = balance.ETH || 0
     const currentTotal = usdtNow + (btcNow * btcPrice) + (ethNow * ethPrice)
 
-    const allSorted = [...trades].sort((a: any, b: any) =>
+    const sorted = [...trades].sort((a: any, b: any) =>
       new Date(a.executed_at).getTime() - new Date(b.executed_at).getTime()
     )
-
-    const firstBuy = allSorted.find((t: any) => t.signal === 'BUY' && t.capital_before > 0)
-    const startingUsdt  = firstBuy ? firstBuy.capital_before : usdtNow
-    const firstPrice    = allSorted[0]?.price || btcPrice
-    const startingTotal = startingUsdt + (1.0 * firstPrice) + (1.0 * firstPrice)
-    setInitialCapital(startingTotal)
-
-    let usdt   = startingUsdt
-    let btcQty = 1.0
-    let ethQty = 1.0
-
-    const allPoints: { time: Date; value: number }[] = []
-
-    allSorted.forEach((trade: any) => {
-      if (trade.signal === 'BUY') {
-        usdt = trade.capital_after
-        if (trade.symbol === 'BTC/USDT') btcQty += trade.quantity
-        if (trade.symbol === 'ETH/USDT') ethQty += trade.quantity
-      } else if (trade.signal === 'SELL') {
-        usdt = trade.capital_after
-        if (trade.symbol === 'BTC/USDT') btcQty = Math.max(0, btcQty - trade.quantity)
-        if (trade.symbol === 'ETH/USDT') ethQty = Math.max(0, ethQty - trade.quantity)
-      }
-      const portfolioValue = usdt + (btcQty * trade.price) + (ethQty * trade.price)
-      allPoints.push({ time: new Date(trade.executed_at), value: Math.max(0, portfolioValue) })
-    })
 
     const start = new Date(startDate)
     start.setHours(0, 0, 0, 0)
     const end = new Date(endDate)
     end.setHours(23, 59, 59, 999)
 
-    let capitalAtStart = startingTotal
-    for (const pt of allPoints) {
-      if (pt.time < start) capitalAtStart = pt.value
-      else break
-    }
+    // Track running quantities
+    let btcQty = 0
+    let ethQty = 0
+    let lastBtcPrice = btcPrice
+    let lastEthPrice = ethPrice
 
-    const filtered = allPoints.filter(p => p.time >= start && p.time <= end)
-    const isToday = endDate === new Date().toISOString().split('T')[0]
+    const points: { label: string; value: number }[] = []
 
-    const points = [
-      { label: startDate, value: capitalAtStart },
-      ...filtered.map(p => ({
-        label: p.time.toLocaleDateString('en-GB', {
+    sorted.forEach((trade: any) => {
+      const tradeTime = new Date(trade.executed_at)
+      const price = trade.price || 0
+      const qty = trade.quantity || 0
+      const usdt = trade.capital_after || 0
+
+      // Update running quantities
+      if (trade.symbol === 'BTC/USDT') {
+        if (trade.signal === 'BUY') btcQty += qty
+        else if (trade.signal === 'SELL') btcQty = Math.max(0, btcQty - qty)
+        lastBtcPrice = price
+      }
+      if (trade.symbol === 'ETH/USDT') {
+        if (trade.signal === 'BUY') ethQty += qty
+        else if (trade.signal === 'SELL') ethQty = Math.max(0, ethQty - qty)
+        lastEthPrice = price
+      }
+
+      // Only plot points within date range
+      if (tradeTime >= start && tradeTime <= end) {
+        const portfolioValue = usdt + (btcQty * lastBtcPrice) + (ethQty * lastEthPrice)
+        const label = tradeTime.toLocaleDateString('en-GB', {
           day: '2-digit', month: '2-digit',
           hour: '2-digit', minute: '2-digit'
-        }),
-        value: p.value
-      })),
-      ...(isToday ? [{ label: 'Now', value: currentTotal }] : [])
-    ]
+        })
+        points.push({ label, value: Math.max(0, portfolioValue) })
+      }
+    })
+
+    // Add current total as last point
+    const isToday = endDate === new Date().toISOString().split('T')[0]
+    if (isToday) {
+      points.push({ label: 'Now', value: currentTotal })
+    }
+
+    if (points.length === 0) {
+      points.push({ label: 'Now', value: currentTotal })
+    }
 
     setChartData({
       labels: points.map(p => p.label),
       datasets: [{
-        label: 'Portfolio Value ($)',
+        label: 'Portfolio Value (USDT + Assets)',
         data: points.map(p => p.value),
         borderColor: '#a855f7',
         backgroundColor: '#a855f720',
@@ -125,16 +122,17 @@ const PortfolioChart = React.memo(function PortfolioChart() {
     })
   }, [startDate, endDate])
 
-  // Rebuild chart when data arrives OR dates change
   useEffect(() => {
     if (allTrades.length > 0 && allBalance) {
       buildChart(allTrades, allBalance)
+    } else if (allBalance) {
+      buildChart([], allBalance)
     }
   }, [allTrades, allBalance, buildChart])
 
   const resetDates = () => {
     const d = new Date()
-    d.setDate(d.getDate() - 7)
+    d.setDate(d.getDate() - 30)
     setStartDate(d.toISOString().split('T')[0])
     setEndDate(new Date().toISOString().split('T')[0])
   }
@@ -178,11 +176,6 @@ const PortfolioChart = React.memo(function PortfolioChart() {
             className="px-2 py-1 text-xs rounded bg-gray-700 text-gray-300 hover:bg-gray-600">
             Reset
           </button>
-          {initialCapital > 0 && (
-            <span className="text-gray-500 text-xs">
-              Start: ${initialCapital.toLocaleString(undefined, { maximumFractionDigits: 0 })}
-            </span>
-          )}
         </div>
       </div>
       {chartData ? (

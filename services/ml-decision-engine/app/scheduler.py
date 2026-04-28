@@ -27,7 +27,7 @@ FEATURE_COLS = [
 MARKET_GRPC_CHANNEL = 'market-data-collector:50051'
 
 def process_candle(symbol: str, candle) -> None:
-    """Process a single candle and publish signal"""
+    """Process a single candle and publish signal — skips HOLD"""
     try:
         features = {
             'ma20': candle.ma20, 'ma50': candle.ma50, 'ma200': candle.ma200,
@@ -55,6 +55,12 @@ def process_candle(symbol: str, candle) -> None:
             return
 
         result = predict(symbol, features)
+
+        # Skip HOLD — no need to publish to RabbitMQ
+        if result["signal"] == "HOLD":
+            print(f"[Stream] HOLD for {symbol} ({result['confidence']:.1f}%) — skipping queue")
+            return
+
         publish_signal({
             "symbol":     symbol,
             "signal":     result["signal"],

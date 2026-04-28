@@ -44,3 +44,4 @@ grpcio
 protobuf 
 prometheus-fastapi-instrumentator 
 websockets 
+psycopg2-binary 
